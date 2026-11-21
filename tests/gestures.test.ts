@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GESTURE } from '../src/config';
-import { actionForGesture, createRecognizer, maxTapsFor, type Gesture } from '../src/input/gestures';
+import { actionForGesture, createRecognizer, gestureActions, maxTapsFor, type Gesture } from '../src/input/gestures';
 
 /** Manual clock: timers fire only when the test advances time. */
 function harness(maxTaps = 3) {
@@ -130,5 +130,65 @@ describe('mapping', () => {
     expect(maxTapsFor(['click', 'left'])).toBe(1);
     expect(maxTapsFor(['replay', 'next'])).toBe(2);
     expect(maxTapsFor(['replay', 'contrast', 'next'])).toBe(3);
+  });
+});
+
+describe('long press ordering and universal actions', () => {
+  it('long press accepts a speed offer before moving on', () => {
+    expect(actionForGesture({ kind: 'longPress' }, ['acceptStretch', 'next', 'observer'])).toBe('acceptStretch');
+    expect(actionForGesture({ kind: 'longPress' }, ['next', 'observer'])).toBe('next');
+  });
+
+  it('gives two- and three-finger taps an answer on the summary', () => {
+    const valid = gestureActions('summary', ['next', 'observer']);
+    expect(actionForGesture({ kind: 'multiFingerTap', fingers: 2 }, valid)).toBe('help');
+    expect(actionForGesture({ kind: 'multiFingerTap', fingers: 3 }, valid)).toBe('levelSelect');
+  });
+
+  it('adds nothing during setup', () => {
+    expect(gestureActions('onboarding', [])).toEqual([]);
+  });
+});
+
+describe('lost and cancelled touches', () => {
+  it('forgets a finger whose lift never arrived', () => {
+    const h = harness(1);
+    h.rec.down(1, 100, 100, h.now());
+    h.advance(GESTURE.staleTouchMs + 100);
+    h.got.length = 0;
+    h.rec.down(2, 100, 100, h.now());
+    h.advance(60);
+    h.rec.up(2, 100, 100, h.now());
+    expect(h.got).toEqual([{ kind: 'tap', count: 1 }]);
+  });
+
+  it('still finishes a long press when Android cancels the pointer mid-hold', () => {
+    const h = harness();
+    h.rec.down(1, 100, 100, h.now());
+    h.advance(GESTURE.cancelHoldMs + 10);
+    h.rec.cancel(h.now());
+    h.advance(GESTURE.longPressMs);
+    expect(h.got).toEqual([{ kind: 'longPress' }]);
+    h.got.length = 0;
+    h.tap();
+    h.advance(GESTURE.tapWindowMs + 1);
+    expect(h.got).toEqual([{ kind: 'tap', count: 1 }]);
+  });
+
+  it('drops an early cancel', () => {
+    const h = harness();
+    h.rec.down(1, 100, 100, h.now());
+    h.advance(50);
+    h.rec.cancel(h.now());
+    h.advance(GESTURE.longPressMs * 2);
+    expect(h.got).toEqual([]);
+  });
+
+  it('skips the long press where read-aloud owns it', () => {
+    const h = harness();
+    h.rec.down(1, 100, 100, h.now(), false);
+    h.advance(GESTURE.longPressMs + 10);
+    h.rec.up(1, 100, 100, h.now());
+    expect(h.got).toEqual([]);
   });
 });

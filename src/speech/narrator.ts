@@ -6,6 +6,7 @@ type Pending = { utter: SpeechSynthesisUtterance; resolve: () => void };
 
 const pending = new Set<Pending>();
 let voice: SpeechSynthesisVoice | null = null;
+let listening = false;
 
 const synth = (): SpeechSynthesis | null => (typeof window !== 'undefined' && 'speechSynthesis' in window ? window.speechSynthesis : null);
 
@@ -21,6 +22,9 @@ export function initNarrator(): void {
   const s = synth();
   if (!s) return;
   voice = pickVoice();
+  // initNarrator runs on several first gestures; one listener is enough.
+  if (listening) return;
+  listening = true;
   s.addEventListener('voiceschanged', () => {
     voice = pickVoice();
   });
@@ -30,10 +34,30 @@ export function isSpeechAvailable(): boolean {
   return isNative() || synth() !== null;
 }
 
+/** How long to wait for the phone's engine to say it is done before assuming it never will. */
+export function nativeSpeechTimeoutMs(text: string): number {
+  return text.length * NARRATION.nativeMsPerChar + NARRATION.nativeSlackMs;
+}
+
+// A speech engine that fails silently never reports the end; without this, every sound after it would wait forever.
+function nativeSpeakWithTimeout(text: string): Promise<void> {
+  const spoken = nativeSpeak(text, NARRATION.rate);
+  return new Promise<void>((resolve) => {
+    const timer = setTimeout(() => {
+      cancel();
+      resolve();
+    }, nativeSpeechTimeoutMs(text));
+    void spoken.then(() => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+}
+
 /** Speaks text; resolves when it finishes or is cancelled. */
 export function speak(text: string): Promise<void> {
   // The Android web view has no speechSynthesis; the phone's own engine speaks instead.
-  if (isNative()) return text ? nativeSpeak(text, NARRATION.rate) : Promise.resolve();
+  if (isNative()) return text ? nativeSpeakWithTimeout(text) : Promise.resolve();
   const s = synth();
   if (!s || !text) return Promise.resolve();
   return new Promise<void>((resolve) => {

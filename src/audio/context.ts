@@ -4,6 +4,8 @@ let ctx: AudioContext | null = null;
 
 export function getAudioContext(): AudioContext {
   if (!ctx) ctx = new AudioContext({ sampleRate: SAMPLE_RATE, latencyHint: 'interactive' });
+  // Start does not wait for the unlock, so every sound asks again; a suspended context would drop the first one.
+  if (ctx.state === 'suspended') ctx.resume().catch(() => undefined);
   return ctx;
 }
 

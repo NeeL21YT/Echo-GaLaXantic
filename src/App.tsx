@@ -1,21 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import { unlockAudio } from './audio/context';
-import { isPlaying, setVolume } from './audio/player';
+import { isAudioUnlocked } from './audio/context';
+import { stop as stopMic } from './audio/micDetector';
+import { isPlaying, setVolume, stopAll } from './audio/player';
 import { backStep, EXIT_CONFIRM_MS } from './input/back';
-import { attachGestures } from './input/gestures';
+import { attachGestures, gestureActions } from './input/gestures';
 import { phrases } from './input/inputStyle';
 import { attachReadAloud } from './input/readAloud';
 import { attachKeyboard } from './input/keyboard';
 import { scanMenu } from './input/menuScan';
-import { actionForVolumeKey } from './input/volumeKeys';
-import { captureVolumeKeys, exitApp, isScreenReaderOn, onBackPressed, onScreenReaderChange, onVolumeKey, vibrate } from './native/echoNative';
-import { GESTURE } from './config';
-import { cancel as cancelSpeech, initNarrator, speak } from './speech/narrator';
+import { actionForVolumeKey, createVolumeKeyGuard } from './input/volumeKeys';
+import { cancelVibration, captureVolumeKeys, exitApp, isNative, isScreenReaderOn, micPermissionGranted, onBackPressed, openAppSettings, onScreenReaderChange, onVolumeKey, vibrate } from './native/echoNative';
+import { GESTURE, VOLUME_KEY } from './config';
+import { cancel as cancelSpeech, initNarrator, isSpeaking, speak } from './speech/narrator';
 import { saveSettings } from './state/progress';
 import { Announcer } from './speech/Announcer';
 import { lessonAction, lessonActions } from './state/lessonRunner';
 import { roomAction, roomActions } from './state/roomRunner';
-import { dispatch, say, startLevel, validActions } from './state/runner';
+import { dispatch, say, setClickSource, startLevel, validActions } from './state/runner';
 import { useEcho, type Action } from './state/store';
 import { BlindView } from './ui/BlindView';
 import { Controls } from './ui/Controls';
@@ -26,6 +28,8 @@ import { Onboarding } from './ui/Onboarding';
 import { ProgressPanel } from './ui/ProgressPanel';
 import { Settings } from './ui/Settings';
 import { buttonSpeechLabel, LEVEL_LIST_HEADING, levelSelectPrompt } from './ui/labels';
+
+const IGNORED_GESTURE_HINT = 'That gesture does nothing here. Tap with two fingers for help.';
 
 const isDevAudio = import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === 'audio';
 
@@ -38,7 +42,7 @@ function useActionLabels(): Partial<Record<Action, string>> {
   if (phase === 'ready') return { answer: 'Facing the door' };
   if (phase === 'summary') return { next: 'Level list' };
   if (phase === 'lesson') return { next: 'Continue', replay: 'Hear again', answer: 'Practise this skill' };
-  if (phase === 'realRoom') return { far: 'Farther', near: 'Closer', answer: 'Lock in my guess', replay: 'Tell me the distance', next: 'Try again', click: 'Click (ping)' };
+  if (phase === 'realRoom') return { far: 'Far', near: 'Near', answer: 'Lock in my guess', replay: 'Tell me the distance', next: 'Next', click: 'Click (ping)' };
   return {};
 }
 
@@ -63,7 +67,6 @@ export function App() {
   const lastHits = useEcho((s) => s.lastHits);
   const lastPose = useEcho((s) => s.lastPose);
   const shotId = useEcho((s) => s.shotId);
-  const clicks = useEcho((s) => s.clicksThisTrial);
   // Subscribing to these re-renders Controls when the valid actions change.
   useEcho((s) => s.lastResult);
   useEcho((s) => s.stretchOffer);
@@ -76,8 +79,16 @@ export function App() {
       setSettingsOpen((o) => !o);
       return true;
     }
-    if (phase === 'lesson') return lessonAction(a);
-    if (phase === 'realRoom') return roomAction(a);
+    // Read the phase now, not from the render this closure was made in: a key can arrive before React re-renders.
+    const now = useEcho.getState().phase;
+    // Settings sits on top of the screen; nothing underneath may act while it is open, except Escape to close it.
+    if (settingsOpenRef.current) {
+      if (a !== 'levelSelect') return false;
+      setSettingsOpen(false);
+      return true;
+    }
+    if (now === 'lesson') return lessonAction(a);
+    if (now === 'realRoom') return roomAction(a);
     return dispatch(a);
   };
   const onActionRef = useRef(onAction);
@@ -129,33 +140,67 @@ export function App() {
     const unlock = (event: Event) => {
       if (unlocked || (event instanceof KeyboardEvent && event.repeat)) return;
       unlocked = true;
-      void unlockAudio();
+      unlockAudio().catch(() => undefined);
       initNarrator();
-      if (useEcho.getState().phase === 'levelSelect') {
+      if (!launchPromptSpoken.current && useEcho.getState().phase === 'levelSelect') {
+        launchPromptSpoken.current = true;
         // The first Tab also focuses a button; let its focus label happen before the full instructions.
         requestAnimationFrame(() => {
           if (useEcho.getState().phase === 'levelSelect') void say(levelSelectPrompt(), { display: LEVEL_LIST_HEADING });
         });
       }
     };
+    // A touch only counts as a user gesture once it lifts, so pointerdown alone may leave audio suspended on Android.
+    // Keep trying on lift and click until the context is running.
+    const ensureAudio = () => {
+      if (!isAudioUnlocked()) unlockAudio().catch(() => undefined);
+    };
     // Capture runs before shortcuts can change phase, and one guard covers both gesture types.
     el.addEventListener('pointerdown', unlock, true);
     el.addEventListener('keydown', unlock, true);
+    el.addEventListener('pointerup', ensureAudio, true);
+    el.addEventListener('click', ensureAudio, true);
     return () => {
       el.removeEventListener('pointerdown', unlock, true);
       el.removeEventListener('keydown', unlock, true);
+      el.removeEventListener('pointerup', ensureAudio, true);
+      el.removeEventListener('click', ensureAudio, true);
     };
   }, []);
 
   const screenReaderOn = useEcho((s) => s.screenReaderOn);
+  // The narration chosen before TalkBack forced screen-reader mode; that, not the forced value, is what gets saved.
+  const narrationBefore = useRef<'voice' | 'screenreader' | null>(null);
   const volumeKeys = useEcho((s) => s.settings.volumeKeys);
+  const inOnboarding = phase === 'onboarding';
+  // True once the level-list prompt has been spoken at launch, so the first gesture does not repeat it.
+  const launchPromptSpoken = useRef(false);
+  // Set when the app is hidden while the microphone is listening, so it can listen again on return.
+  const micWasOn = useRef(false);
 
   // Touch gestures (§13.2). With a screen reader on, the OS keeps raw touch, so the real buttons are the way in.
   useEffect(() => {
     const el = practiceRef.current;
     if (!el || screenReaderOn) return;
-    const valid = () => currentActions(useEcho.getState().phase);
-    return attachGestures(el, (a) => onActionRef.current(a), valid, () => void vibrate([GESTURE.tickMs]));
+    const valid = () => {
+      const phaseNow = useEcho.getState().phase;
+      return settingsOpenRef.current ? [] : gestureActions(phaseNow, currentActions(phaseNow));
+    };
+    const readsAloud = () => {
+      const st = useEcho.getState();
+      return !st.screenReaderOn && st.settings.narration === 'voice';
+    };
+    // Voice mode only, and never over other sound or on the screens where stray taps are expected.
+    let lastHintAt = -Infinity;
+    const hint = () => {
+      const st = useEcho.getState();
+      if (!readsAloud() || settingsOpenRef.current || st.phase === 'onboarding' || st.phase === 'levelSelect') return;
+      const now = Date.now();
+      if (now - lastHintAt < GESTURE.ignoredHintGapMs || isPlaying() || isSpeaking()) return;
+      lastHintAt = now;
+      void say(IGNORED_GESTURE_HINT);
+    };
+    return attachGestures(el, (a) => onActionRef.current(a), valid, () => void vibrate([GESTURE.tickMs]), readsAloud, hint);
   }, [screenReaderOn]);
 
   // Touch-and-hold reads a control aloud (§13.2). Only with our own voice: a screen reader already does this itself.
@@ -177,13 +222,18 @@ export function App() {
 
   // Volume keys (§13.3), native only: keys act as Click and Replay unless a screen reader needs them for its own volume.
   useEffect(() => {
-    const capture = volumeKeys && !screenReaderOn;
+    // Setup needs the phone's own volume for the headphone check, so the keys are released until it is done.
+    const capture = volumeKeys && !screenReaderOn && !inOnboarding;
     void captureVolumeKeys(capture);
     if (!capture) return;
+    const allowed = createVolumeKeyGuard(VOLUME_KEY.repeatGuardMs);
     return onVolumeKey((key) => {
+      if (!allowed(key)) return;
+      // Settings is on top; the keys stay out of the way there.
+      if (settingsOpenRef.current) return;
       const st = useEcho.getState();
       // On the level list there are no practice actions, so the keys scan the menu instead (§13.3).
-      if (st.phase === 'levelSelect' && !settingsOpenRef.current) {
+      if (st.phase === 'levelSelect') {
         scanMenu(key, (text) => {
           if (st.settings.narration === 'voice') {
             cancelSpeech();
@@ -195,35 +245,75 @@ export function App() {
         return;
       }
       const valid = currentActions(st.phase);
-      const action = actionForVolumeKey(key, valid, st.phase === 'ready');
+      const action = actionForVolumeKey(key, valid, st.phase);
       if (action) onActionRef.current(action);
     });
-  }, [volumeKeys, screenReaderOn]);
+  }, [volumeKeys, screenReaderOn, inOnboarding]);
 
   // Device screen reader (§13.5): when TalkBack is on, our backup voice stays silent and the screen reader narrates.
   useEffect(() => {
-    let before: 'voice' | 'screenreader' | null = null;
     const apply = (on: boolean) => {
       const st = useEcho.getState();
       if (on === st.screenReaderOn) return;
       st.patch({ screenReaderOn: on });
       if (on) {
-        before = st.settings.narration;
+        // On the phone 'screenreader' without TalkBack is silence, so never restore it.
+        narrationBefore.current = isNative() && st.settings.narration === 'screenreader' ? 'voice' : st.settings.narration;
         st.setSettings({ narration: 'screenreader' });
-      } else if (before !== null) {
-        st.setSettings({ narration: before });
-        before = null;
+      } else if (narrationBefore.current !== null) {
+        st.setSettings({ narration: narrationBefore.current });
+        narrationBefore.current = null;
       }
     };
-    void isScreenReaderOn().then(apply);
+    // An older build saved the screen-reader value TalkBack forced. With TalkBack off that would leave Echo silent,
+    // so on the phone the first check turns such a saved value back into the spoken voice.
+    void isScreenReaderOn().then((on) => {
+      const st = useEcho.getState();
+      if (!on && isNative() && st.settings.narration === 'screenreader') st.setSettings({ narration: 'voice' });
+      apply(on);
+    });
     const off = onScreenReaderChange(apply);
-    const recheck = () => {
-      if (!document.hidden) void isScreenReaderOn().then(apply);
+    // The runner owns jobs, the Escape clock and repeating the message on return. This handler only adds what it
+    // does not: vibration, the microphone, the screen-reader recheck, and a silence for screens the runner skips.
+    // Neither speaks on hide, and the mic restart speaks only if it fails, so nothing overlaps.
+    const onVisibility = () => {
+      if (document.hidden) {
+        cancelSpeech();
+        stopAll();
+        void cancelVibration();
+        if (useEcho.getState().micOn) {
+          micWasOn.current = true;
+          stopMic();
+          useEcho.getState().patch({ micOn: false });
+        }
+        return;
+      }
+      void isScreenReaderOn().then(apply);
+      if (micWasOn.current) {
+        micWasOn.current = false;
+        // Asks Android for the microphone again, so a permission revoked meanwhile falls back to the Space key.
+        void setClickSource('mic');
+      }
     };
-    document.addEventListener('visibilitychange', recheck);
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       off();
-      document.removeEventListener('visibilitychange', recheck);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
+
+  // Native speech needs no gesture, so a returning user hears the level list at launch (unless TalkBack is on).
+  useEffect(() => {
+    if (!isNative()) return;
+    let cancelled = false;
+    void isScreenReaderOn().then((on) => {
+      const st = useEcho.getState();
+      if (cancelled || on || launchPromptSpoken.current || st.phase !== 'levelSelect') return;
+      launchPromptSpoken.current = true;
+      void say(levelSelectPrompt(), { display: LEVEL_LIST_HEADING });
+    });
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -247,11 +337,22 @@ export function App() {
     setVolume(useEcho.getState().settings.volume);
     return useEcho.subscribe((s, prev) => {
       if (s.settings === prev.settings) return;
-      saveSettings(s.settings);
+      // A narration change made by the user while TalkBack is on replaces the remembered choice.
+      if (s.screenReaderOn && narrationBefore.current !== null && s.settings.narration !== prev.settings.narration && s.settings.narration !== 'screenreader') {
+        narrationBefore.current = s.settings.narration;
+      }
+      const remembered = s.screenReaderOn ? narrationBefore.current : null;
+      saveSettings(remembered ? { ...s.settings, narration: remembered } : s.settings);
       if (s.settings.volume !== prev.settings.volume) setVolume(s.settings.volume);
       if (s.settings.narration !== prev.settings.narration) cancelSpeech();
     });
   }, []);
+
+  useEffect(() => {
+    // The runner's mic gate reads this flag.
+    useEcho.getState().patch({ settingsOpen });
+    if (!settingsOpen) practiceRef.current?.focus();
+  }, [settingsOpen]);
 
   // Keys only work while the practice area has focus, so return focus to it on every phase change.
   useEffect(() => {
@@ -259,12 +360,21 @@ export function App() {
     setReveal(false);
   }, [phase]);
 
+  const micBlocked = useEcho((s) => s.micBlocked);
+  // Coming back from the phone's settings page: clear the notice if the microphone is now allowed.
+  useEffect(() => {
+    if (!micBlocked) return;
+    const recheck = () => {
+      if (!document.hidden) void micPermissionGranted().then((ok) => ok && useEcho.getState().patch({ micBlocked: false }));
+    };
+    document.addEventListener('visibilitychange', recheck);
+    return () => document.removeEventListener('visibilitychange', recheck);
+  }, [micBlocked]);
+
   if (isDevAudio) return <DevAudio />;
 
   const baseActions = currentActions(phase);
-  const actions = phase === 'onboarding' ? [] : [...baseActions, 'settings' as const];
-  const answerActions: Action[] = ['left', 'right', 'near', 'far', 'answer'];
-  const disabled = phase === 'ready' && clicks < 1 ? answerActions : [];
+  const actions: Action[] = phase === 'onboarding' ? [] : settingsOpen ? ['settings'] : [...baseActions, 'settings'];
   const hideWorld =
     levelId !== null && HIDDEN_UNTIL_ANSWERED.has(levelId) && phase === 'ready' && !reveal;
 
@@ -291,7 +401,14 @@ export function App() {
         {phase === 'onboarding' && <Onboarding practiceRef={practiceRef} />}
         {phase === 'levelSelect' && <LevelSelect />}
         {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} />}
-        <Controls actions={actions} onAction={onAction} disabled={disabled} labels={labels} />
+        {micBlocked && (
+          <div className="mic-blocked">
+            <button type="button" onClick={() => void openAppSettings()}>
+              Open settings
+            </button>
+          </div>
+        )}
+        <Controls actions={actions} onAction={onAction} labels={labels} />
         {phase === 'levelSelect' && <ProgressPanel />}
       </div>
       {observer && (

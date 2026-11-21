@@ -1,5 +1,6 @@
 // Volume buttons as a menu scanner (§13.3): on the level list, volume down moves to the next option and speaks it,
 // volume up chooses the one you are on. Works without seeing the screen or touching it.
+import { spokenNumber } from '../levels/feedback';
 import { spokenLabel } from './readAloud';
 
 const ITEMS = '.level-select button.card';
@@ -33,7 +34,7 @@ export function scanMenu(key: 'up' | 'down', speak: (text: string) => void): boo
     const el = items[next];
     if (!el) return false;
     mark(el);
-    speak(`${spokenLabel(el)} ${next + 1} of ${items.length}.`);
+    speak(`${spokenLabel(el)} ${spokenNumber(next + 1)} of ${spokenNumber(items.length)}.`);
     return true;
   }
 

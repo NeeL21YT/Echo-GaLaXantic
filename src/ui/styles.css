@@ -74,18 +74,20 @@ button {
 
 .layout {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   min-height: 100vh;
   min-height: 100dvh;
 }
 
 .layout.split {
-  grid-template-columns: 40% 60%;
+  grid-template-columns: minmax(0, 40%) minmax(0, 60%);
 }
 
 .practice {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
   padding: var(--safe-top) var(--safe-right) 0 var(--safe-left);
@@ -346,17 +348,36 @@ button:active:not(:disabled) {
   border-radius: 14px;
 }
 
+.settings,
+.progress-panel {
+  min-width: 0;
+}
+
+.settings p,
+.settings label {
+  overflow-wrap: anywhere;
+}
+
+.settings h2 {
+  /* Scrolling to the heading must stop below the Back button. */
+  scroll-margin-top: 5rem;
+}
+
 .settings label {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
   width: 100%;
+  min-width: 0;
   max-width: 32rem;
   color: #e8e8e8;
 }
 
 .settings select,
 .settings input[type='range'] {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 56px;
   padding: 0 0.75rem;
   font: inherit;
@@ -368,7 +389,7 @@ button:active:not(:disabled) {
 
 .settings-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
   gap: 0.6rem;
   align-items: center;
 }
@@ -448,8 +469,37 @@ button:active:not(:disabled) {
 
 .blind-view {
   min-height: 0;
+  min-width: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* Centring with justify-content would clip the top of a message taller than the area (landscape), where it can
+     never be scrolled back into view. Auto margins centre it only when there is spare room. */
+  justify-content: flex-start;
+}
+
+.blind-view > :first-child {
+  margin-top: auto;
+}
+
+.blind-view > :last-child {
+  margin-bottom: auto;
+}
+
+/* Settings and the progress list scroll with the page, so the fixed practice height must not squeeze them. */
+.practice:has(.settings) {
+  height: auto;
+  min-height: 100dvh;
+}
+
+.settings {
+  padding-top: 0.75rem;
+}
+
+/* Touch must reach our gesture code: a scroll container takes the pan itself unless it says none (touch-action does not
+   cross a scroll container), so the blind view carries it too. The setup screens swipe as well. */
+.practice.gesture-surface .blind-view,
+.practice:has(.onboarding) .blind-view {
+  touch-action: none;
 }
 
 .practice:has(.level-select) {
@@ -468,4 +518,22 @@ button:active:not(:disabled) {
 /* Two columns of buttons even on a narrow phone, so the controls take less of the screen. */
 .controls {
   grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+}
+
+/* Shown only when Android refused the microphone: a real button to the phone's settings page. */
+.mic-blocked {
+  padding: 0.75rem 1.25rem 0;
+}
+
+.mic-blocked button {
+  width: 100%;
+}
+
+.progress-panel {
+  padding-bottom: calc(1rem + var(--safe-bottom));
+}
+
+/* A message taller than its area scrolls by touch; vertical swipes there scroll instead of acting. */
+.practice.gesture-surface .blind-view[data-scroll='true'] {
+  touch-action: pan-y;
 }

@@ -77,6 +77,8 @@ export const SFX = {
   levelUp: { freqsHz: [523.25, 659.25, 783.99], noteS: 0.1 },
   lrTest: { freqHz: 1000, durS: 0.6 },
   footstep: { durS: 0.03, bandHz: 800, q: 1.2, gain: 0.25 },
+  // A soft tick per turn, so a blind learner knows each turn press or swipe registered.
+  turn: { freqHz: 500, durS: 0.03, gain: 0.2 },
   // Short fades stop clicks at tone edges.
   fadeS: 0.005,
   silenceGain: 0.0001,
@@ -103,6 +105,10 @@ export const NARRATION = {
   idlePollMs: 50,
   // Screen-reader mode can't tell when NVDA finishes, so a contrast label gets this much room before its sound.
   screenReaderLabelGapMs: 1500,
+  // If the phone's speech engine never reports the end of an utterance, waiting on it would block every sound
+  // that follows. After this long (per character plus slack) it is treated as finished.
+  nativeMsPerChar: 150,
+  nativeSlackMs: 5000,
 };
 
 // Feedback (§7.3).
@@ -155,6 +161,7 @@ export const LEVEL_FEEDBACK = {
   behindDeg: 150,
   slightlyDeg: 30,
   wallAheadDeg: 45,
+  half: 0.5, // A stretch step of one and a half is spoken as a half.
   numberBase: 10, // Decimal groups for spoken counts and time limits.
 } as const;
 
@@ -176,10 +183,22 @@ export const GESTURE = {
   multiFingerWindowMs: 120,
   /** Confirmation tick so the user knows a gesture registered. */
   tickMs: 20,
+  /** Least time between spoken "that does nothing here" hints, so repeated taps do not talk over each other. */
+  ignoredHintGapMs: 6000,
   /** Holding a finger on a control this long reads it aloud instead of pressing it. Shorter than longPressMs so the two never clash. */
   readAloudMs: 450,
   /** A click arriving this soon after a read-aloud is the lift of that same touch, so it is swallowed. */
   suppressClickMs: 400,
+  /** A finger down this long with no lift is a lost lift (the element vanished, the OS took the touch); the next touch starts clean. */
+  staleTouchMs: 2000,
+  /** Android cancels the pointer when its own long-press starts, around 400-500 ms. A cancel after this long, with no movement, is that. */
+  cancelHoldMs: 300,
+};
+
+// Volume keys (§13.3).
+export const VOLUME_KEY = {
+  /** A held key repeats; the same key within this long is the same press. */
+  repeatGuardMs: 150,
 };
 
 export const MORSE = {
@@ -258,3 +277,25 @@ export const HAPTIC = {
   miss: [200, 100, 50],             // long then short: "down"
   bump: [120, 60, 120, 60, 120],    // three even buzzes
 } as const;
+
+// Local storage bounds: old entries are dropped first, so a full or slow device never blocks a run.
+export const STORAGE_LIMITS = {
+  maxTrials: 400,
+  maxRuns: 200,
+  maxLessons: 50,
+  /** Pause after the last volume-slider step before the new level is spoken. */
+  volumeSpeechDebounceMs: 400,
+} as const;
+
+// Screen-reader mode cannot see when TalkBack or NVDA finishes reading, so a flow that must not talk over a sound,
+// or over the microphone, waits this long per character of what it just announced.
+export const SCREEN_READER_WAIT = {
+  msPerChar: 70,
+  slackMs: 700,
+};
+
+// A tone or tick the click coach plays leaks into the mic; clicks heard this soon after our own sound are ignored.
+export const COACH_QUIET_AFTER_TONE_MS = 600;
+
+// After this many "no wall found" pings in a row the real-room check adds a tip about the room.
+export const ROOM_FAILS_BEFORE_TIP = 2;

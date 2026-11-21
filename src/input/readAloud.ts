@@ -4,7 +4,8 @@
 import { GESTURE } from '../config';
 
 /** Things a touch-and-hold reads aloud. Gestures ignore touches that start on these, so a read never also fires an action. */
-export const READABLE_SELECTOR = 'button, [role="button"], select, input, label, h2, li.chip, .blind-message';
+// The message is left out on purpose: it is the big touch surface, so a long press there is Answer or Next.
+export const READABLE_SELECTOR = 'button, [role="button"], select, input, label, h2, li.chip';
 
 /** What a person would hear for this element: its label, or what is visibly written on it. */
 export function spokenLabel(el: HTMLElement): string {
@@ -56,7 +57,9 @@ export function attachReadAloud(container: HTMLElement, { enabled, speak, onRead
     // A new touch starts clean: nothing from the last one may linger and swallow this one's click.
     holding = false;
     ended = false;
-    if (!enabled()) return;
+    // A leftover timer from an earlier touch, or a second finger, must not read or arm the click guard.
+    clearTimer();
+    if (!e.isPrimary || !enabled()) return;
     const target = e.target instanceof Element ? e.target.closest<HTMLElement>(READABLE_SELECTOR) : null;
     if (!target) return;
     startX = e.clientX;
@@ -80,8 +83,11 @@ export function attachReadAloud(container: HTMLElement, { enabled, speak, onRead
   // Android starts its own long-press handling (text selection, context menu) at about the same moment and may then
   // cancel the pointer. A cancel without movement is that, not a scroll, so it must not abort the read.
   const cancelled = () => {
-    if (holding) finishTouch();
-    else if (timer) ended = true; // let the pending read still fire; no click will follow a cancelled pointer
+    // No click follows a cancelled pointer, so nothing needs swallowing; arming the guard would eat the next real tap.
+    if (holding) {
+      clearTimer();
+      holding = false;
+    } else if (timer) ended = true; // let the pending read still fire; no click will follow a cancelled pointer
   };
 
   const contextMenu = (e: Event) => {
