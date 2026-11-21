@@ -53,7 +53,23 @@ export const CLICK = {
   decayTauS: 0.0006,
   noiseMix: 0.15,
   peak: 0.8,
+  // Fixed noise seed: every render uses the identical click, so replays and contrasts compare like with like.
+  noiseSeed: 0x0ec40,
 };
 
 // A rendered stimulus peak above this logs a warning (never rescaled).
 export const CLIP_WARN_PEAK = 0.98;
+
+// Procedural sound effects (§6.5). Gains are linear, before the master bus.
+export const SFX = {
+  gain: 0.35,
+  bump: { freqHz: 120, durS: 0.08 },
+  correct: { freqsHz: [660, 880], noteS: 0.08 },
+  wrong: { freqHz: 330, durS: 0.15, gain: 0.2 },
+  levelUp: { freqsHz: [523.25, 659.25, 783.99], noteS: 0.1 },
+  lrTest: { freqHz: 1000, durS: 0.6 },
+  footstep: { durS: 0.03, bandHz: 800, q: 1.2, gain: 0.25 },
+  // Short fades stop clicks at tone edges.
+  fadeS: 0.005,
+  silenceGain: 0.0001,
+};
