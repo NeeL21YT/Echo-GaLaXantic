@@ -9,8 +9,10 @@ interface EchoNativePlugin {
   cancelVibration(): Promise<void>;
   speak(options: { id: number; text: string; rate: number }): Promise<void>;
   stopSpeaking(): Promise<void>;
+  exitApp(): Promise<void>;
   addListener(event: 'screenReaderChanged', fn: (data: { on: boolean }) => void): Promise<PluginListenerHandle>;
   addListener(event: 'speechEnd', fn: (data: { id: number }) => void): Promise<PluginListenerHandle>;
+  addListener(event: 'backPressed', fn: () => void): Promise<PluginListenerHandle>;
   addListener(event: 'volumeKey', fn: (data: { key: 'up' | 'down' }) => void): Promise<PluginListenerHandle>;
 }
 
@@ -114,3 +116,21 @@ export function nativeStopSpeaking(): void {
 }
 
 export const nativeSpeechPending = (): boolean => speechWaiting.size > 0;
+
+// ---------- back ----------
+
+/** The phone's back button or back swipe. Native only; the plugin swallows it so JS decides what Back means. */
+export function onBackPressed(fn: () => void): () => void {
+  if (!isNative()) return () => undefined;
+  const handle = Native.addListener('backPressed', fn);
+  return () => void handle.then((h) => h.remove());
+}
+
+export async function exitApp(): Promise<void> {
+  if (!isNative()) return;
+  try {
+    await Native.exitApp();
+  } catch {
+    // Nothing to close.
+  }
+}

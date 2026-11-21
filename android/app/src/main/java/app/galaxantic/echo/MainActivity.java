@@ -2,6 +2,7 @@ package app.galaxantic.echo;
 
 import android.os.Bundle;
 import android.view.KeyEvent;
+import androidx.activity.OnBackPressedCallback;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.PluginHandle;
 
@@ -11,6 +12,16 @@ public class MainActivity extends BridgeActivity {
         // Plugins must be registered before super.onCreate builds the bridge.
         registerPlugin(EchoNativePlugin.class);
         super.onCreate(savedInstanceState);
+        // Added after the bridge's own handler, so it runs first. Back must never silently close Echo.
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                PluginHandle handle = getBridge().getPlugin("EchoNative");
+                if (handle != null && handle.getInstance() instanceof EchoNativePlugin) {
+                    ((EchoNativePlugin) handle.getInstance()).handleBack();
+                }
+            }
+        });
     }
 
     @Override

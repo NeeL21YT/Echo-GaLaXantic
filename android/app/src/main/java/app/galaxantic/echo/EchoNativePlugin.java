@@ -136,6 +136,18 @@ public class EchoNativePlugin extends Plugin {
         call.resolve();
     }
 
+    /** Closes the app. JS calls this only after the user pressed Back twice on the top screen. */
+    @PluginMethod
+    public void exitApp(PluginCall call) {
+        call.resolve();
+        getActivity().finish();
+    }
+
+    /** The phone's back button or back swipe, handed to JS to decide what Back means. */
+    void handleBack() {
+        notifyListeners("backPressed", new JSObject());
+    }
+
     @PluginMethod
     public void stopSpeaking(PluginCall call) {
         synchronized (waitingForTts) {

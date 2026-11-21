@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { unlockAudio } from './audio/context';
 import { isPlaying, setVolume } from './audio/player';
+import { backStep, EXIT_CONFIRM_MS } from './input/back';
 import { attachGestures } from './input/gestures';
 import { phrases } from './input/inputStyle';
 import { attachReadAloud } from './input/readAloud';
 import { attachKeyboard } from './input/keyboard';
 import { scanMenu } from './input/menuScan';
 import { actionForVolumeKey } from './input/volumeKeys';
-import { captureVolumeKeys, isScreenReaderOn, onScreenReaderChange, onVolumeKey, vibrate } from './native/echoNative';
+import { captureVolumeKeys, exitApp, isScreenReaderOn, onBackPressed, onScreenReaderChange, onVolumeKey, vibrate } from './native/echoNative';
 import { GESTURE } from './config';
 import { cancel as cancelSpeech, initNarrator, speak } from './speech/narrator';
 import { saveSettings } from './state/progress';
@@ -81,6 +82,31 @@ export function App() {
   };
   const onActionRef = useRef(onAction);
   onActionRef.current = onAction;
+
+  // Back (§13.11): the on-screen button, the phone's back button and its back swipe all do the same one-step-up.
+  const exitArmedAt = useRef(0);
+  const goBack = () => {
+    const step = backStep(useEcho.getState().phase, settingsOpenRef.current);
+    if (step === 'closeSettings') {
+      setSettingsOpen(false);
+      return;
+    }
+    if (step === 'levelList') {
+      onActionRef.current('levelSelect');
+      return;
+    }
+    // The top screen: closing the app takes two presses so it can never happen by accident.
+    const now = Date.now();
+    if (now - exitArmedAt.current < EXIT_CONFIRM_MS) {
+      void exitApp();
+      return;
+    }
+    exitArmedAt.current = now;
+    void say('Press back again to close Echo.');
+  };
+  const goBackRef = useRef(goBack);
+  goBackRef.current = goBack;
+  useEffect(() => onBackPressed(() => goBackRef.current()), []);
 
   useEffect(() => {
     const el = practiceRef.current;
@@ -242,6 +268,7 @@ export function App() {
   const hideWorld =
     levelId !== null && HIDDEN_UNTIL_ANSWERED.has(levelId) && phase === 'ready' && !reveal;
 
+  const showBack = settingsOpen || (phase !== 'levelSelect' && phase !== 'onboarding');
   const gestureSurface = !screenReaderOn && !settingsOpen && phase !== 'onboarding' && phase !== 'levelSelect';
 
   return (
@@ -253,6 +280,13 @@ export function App() {
         aria-label={phrases().areaLabel}
         tabIndex={0}
       >
+        {showBack && (
+          <header className="topbar">
+            <button type="button" className="back" onClick={goBack} aria-label={settingsOpen ? 'Back. Close settings.' : 'Back to the level list.'}>
+              <span aria-hidden="true">‹</span> Back
+            </button>
+          </header>
+        )}
         <BlindView />
         {phase === 'onboarding' && <Onboarding practiceRef={practiceRef} />}
         {phase === 'levelSelect' && <LevelSelect />}
