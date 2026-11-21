@@ -111,7 +111,8 @@ export async function startLevel(id: LevelId): Promise<void> {
     lastPose: null,
     stretchOffer: null,
   });
-  await say(`Level ${id}. ${level.title}. ${level.intro} Press Enter to begin.`);
+  const title = /[.?!]$/.test(level.title) ? level.title : `${level.title}.`;
+  await say(`Level ${id}. ${title} ${level.intro} Press Enter to begin.`);
 }
 
 function beginTrial(index: number): void {
