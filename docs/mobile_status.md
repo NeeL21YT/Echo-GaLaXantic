@@ -112,6 +112,20 @@ Design changes are also logged, one line each, in the Decisions log in `CLAUDE.m
 - **Instructions:** they match the input style. Touch and TalkBack users are never told to press Space or Escape.
 - **Lesson 5:** it described Level 4 wrongly. The doorway is always "the quiet side".
 
+### Responsive layout (partly done, stopped on 22 November 2026)
+Files: `src/ui/styles.css` (about 475 lines reworked) and `src/ui/Controls.tsx`.
+- **Sizing:** the layout uses relative sizes (`rem`, `clamp()`, `dvh`/`svh` with `vh` fallback, `minmax(0, 1fr)` grids, wrapping), not fixed pixel sizes.
+- **Safe areas:** they are respected on all sides.
+- **Buttons:**
+  - They keep a minimum height of 56 px and their labels may wrap, so text is never cut off.
+  - The action buttons stay reachable while a long message scrolls in its own area.
+- **Very large text:** the button area may scroll vertically only when it is taller than its space (`data-scroll` on `.controls`). Otherwise swipes stay gestures, and the seg26 swipe fix is kept.
+- **Measured with no failures** in a headless browser (scripted DevTools checks):
+  - 43 screens at every size: all setup steps, the level list, every phase of Levels 1 to 5, the summary, lesson pages, the real-room check, Settings and the observer view.
+  - Checks: no sideways scrolling, nothing past the screen edge, no button under 56 px, nothing clipped or overlapping, nothing under the safe area, and controls in view.
+  - Sizes: 320×568, 360×640, 375×667 and 392×873, each at text size 100%, 130% and 200% (Android's large-font setting), and 412×915 at 100%.
+- **Build:** `npm run build` and all 382 tests pass with these changes.
+
 ### On-phone test results (three rounds)
 - **Passed:**
   - First-run setup and the headphone check, by button and by swipe.
@@ -172,4 +186,24 @@ None of these stop the app being used. They are listed so nothing is hidden.
   - Long lesson text is shown smaller than 48 px.
   - The mic records only while practising.
   - Lesson 6 links to the real-room check.
+- **Responsive layout, not yet measured:** this work stopped before these sizes were checked:
+  - 412×915 at text size 130% and 200%.
+  - 430×932.
+  - All landscape sizes, for example 873×392 and 640×360.
+  - Tablets at 600×960 and 800×1280.
+  - Desktop at 1280×800 and 1920×1080.
+- **Responsive layout, not tried on the phone:** the new layout has not been installed on the phone yet, so it has only been measured in a headless browser. Earlier on the phone, the on-screen Back button scrolled away on long pages, the observer map sat below the first screen, and landscape text slipped under the status bar. These are not yet confirmed fixed on the device.
 - **Screen readers other than TalkBack:** on the phone, a user who uses a different screen reader and picks "My screen reader" is switched back to Echo's voice at the next launch.
+
+---
+
+## 4. Pick up next session
+
+1. **Finish the responsive layout check.** Measure the sizes still missing (see section 3) with the same checks. Fix anything that fails in `src/ui/styles.css` only, without changing wording or game logic. Keep `touch-action` as it is (`none` on gesture surfaces, `pan-y` only on `.blind-view[data-scroll='true']`).
+2. **Build and install the APK.** Run `npm run build`, `npx cap sync android`, then `cd android && gradlew assembleDebug`, then `adb install -r android/app/build/outputs/apk/debug/app-debug.apk`. Check on the phone:
+   - Portrait, landscape and large font.
+   - The Back button stays reachable on long pages.
+   - The observer map is placed sensibly.
+   - Swipes still answer in Levels 1 and 2.
+3. **Do the person checks in section 2:** hardware Back, volume keys, multi-finger taps, TalkBack, sound, real room, Level 5, the speed-up offer and "Previously…".
+4. **Decide whether to update `build_spec.md`** so it matches the code: `RENDER_VERSION`, `fftSize`, the newer `config.ts` groups, and the §13.8 deviation.
