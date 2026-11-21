@@ -2,6 +2,7 @@
 // Every async step (render, speech, contrast) carries a job id; anything that changes phase bumps it so stale
 // work started before Esc/Next can never play or overwrite state.
 import { CONTRAST_PAUSE_MS, NARRATION, RENDER_VERSION, STEP_M, TURN_DEG } from '../config';
+import { start as startMic, stop as stopMic } from '../audio/micDetector';
 import { play, stopAll } from '../audio/player';
 import { bump, correct, footstep, levelUp, wrong } from '../audio/sfx';
 import { renderStimulus } from '../audio/stimulus';
@@ -15,7 +16,7 @@ import type { AnswerResult, LevelDef, Trial } from '../levels/types';
 import { awaitIdle, cancel, speak } from '../speech/narrator';
 import type { Pose, World } from '../types';
 import { logRun, logTrial, levelStats, suggestedStretch, type TrialLogEntry } from './progress';
-import { useEcho, type Action, type LevelId } from './store';
+import { useEcho, type Action, type ClickSource, type LevelId } from './store';
 
 const S = () => useEcho.getState();
 
@@ -342,6 +343,35 @@ async function stepBy(step: number): Promise<boolean> {
     await finishTrial(level.check(withMeta, 'exit', res.pose, trialElapsed()), 'exit');
   }
   return true;
+}
+
+// ---------- click source ----------
+
+/** Switches between Space and tongue clicks. Falls back to Space if the mic is blocked. Returns the source in use. */
+export async function setClickSource(source: ClickSource): Promise<ClickSource> {
+  const st = S();
+  if (source === 'key') {
+    stopMic();
+    st.setSettings({ clickSource: 'key' });
+    st.patch({ micOn: false });
+    return 'key';
+  }
+  try {
+    await startMic(() => {
+      const now = S();
+      now.patch({ micClicks: now.micClicks + 1 });
+      dispatch('click');
+    });
+    st.setSettings({ clickSource: 'mic' });
+    st.patch({ micOn: true });
+    return 'mic';
+  } catch {
+    stopMic();
+    st.setSettings({ clickSource: 'key' });
+    st.patch({ micOn: false });
+    await say('Microphone blocked. Using the Space key.', { isError: true });
+    return 'key';
+  }
 }
 
 // ---------- help, stretch, dispatch ----------

@@ -1,6 +1,7 @@
 // Zustand store (build_spec §8.2). Pure state + setters; flow logic lives in runner.ts.
 import { create } from 'zustand';
 import { DEFAULT_STRETCH } from '../config';
+import { isOnboarded, loadSettings } from './progress';
 import type { AnswerResult, LevelDef, Trial } from '../levels/types';
 import type { EchoVoice, Hit, Pose } from '../types';
 
@@ -64,6 +65,8 @@ export type EchoState = {
   stretchOffer: number | null;
   settings: Settings;
   micOn: boolean;
+  /** Tongue clicks detected this session (onboarding shows the count). */
+  micClicks: number;
   /** Current text shown in BlindView and sent to narration/announcer. */
   message: string;
   /** Last text routed to the aria-live region; id changes so repeats are re-announced. */
@@ -80,8 +83,11 @@ export const DEFAULT_SETTINGS: Settings = {
   observer: false,
 };
 
+const onboarded = isOnboarded();
+
 export const useEcho = create<EchoState>()((set) => ({
-  phase: 'onboarding',
+  // Returning users skip onboarding (§9.5); audio still unlocks on their first gesture.
+  phase: onboarded ? 'levelSelect' : 'onboarding',
   levelId: null,
   runId: null,
   trialIndex: 0,
@@ -101,9 +107,11 @@ export const useEcho = create<EchoState>()((set) => ({
   lastPose: null,
   shotId: 0,
   stretchOffer: null,
-  settings: DEFAULT_SETTINGS,
+  // The mic needs a fresh permission grant each session, so every session starts on the Space key.
+  settings: { ...DEFAULT_SETTINGS, ...loadSettings(), clickSource: 'key' },
   micOn: false,
-  message: '',
+  micClicks: 0,
+  message: onboarded ? 'Welcome back. Choose a level.' : 'Echo. Press Start.',
   announcement: { text: '', id: 0, isError: false },
   patch: (p) => set(p),
   setSettings: (p) => set((s) => ({ settings: { ...s.settings, ...p } })),

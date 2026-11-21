@@ -170,3 +170,35 @@ button:disabled {
   top: 1rem;
   right: 1rem;
 }
+
+.settings,
+.progress-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem 2rem;
+  font-size: 1.25rem;
+}
+
+.settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-width: 28rem;
+}
+
+.settings select,
+.settings input[type='range'] {
+  min-height: 56px;
+  font: inherit;
+  color: #fff;
+  background: #111;
+  border: 1px solid #555;
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}

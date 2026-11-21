@@ -37,6 +37,9 @@ export const MIC = {
   floorMultiplier: 8,
   floorEmaAlpha: 0.05,
   refractoryMs: 300,
+  // §6.6 says 512; at 48 kHz that is 10.7 ms, shorter than one animation frame, so a 3 ms click could fall
+  // between polls. 1024 (21 ms) covers a frame. See Decisions log.
+  fftSize: 1024,
 };
 
 export const RENDER_VERSION = 1;            // bump when the echo model changes; logged per trial
