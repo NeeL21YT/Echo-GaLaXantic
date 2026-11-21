@@ -64,7 +64,10 @@ export type EchoState = {
   stretchOffer: number | null;
   settings: Settings;
   micOn: boolean;
+  /** Current text shown in BlindView and sent to narration/announcer. */
   message: string;
+  /** Last text routed to the aria-live region; id changes so repeats are re-announced. */
+  announcement: { text: string; id: number; isError: boolean };
   patch: (p: Partial<Omit<EchoState, 'patch' | 'setSettings'>>) => void;
   setSettings: (p: Partial<Settings>) => void;
 };
@@ -101,6 +104,7 @@ export const useEcho = create<EchoState>()((set) => ({
   settings: DEFAULT_SETTINGS,
   micOn: false,
   message: '',
+  announcement: { text: '', id: 0, isError: false },
   patch: (p) => set(p),
   setSettings: (p) => set((s) => ({ settings: { ...s.settings, ...p } })),
 }));

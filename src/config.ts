@@ -87,3 +87,15 @@ export const OBSERVER = {
   minHitAlpha: 0.15,
   marginPx: 24,
 };
+
+// Narration (§9.4).
+export const NARRATION = {
+  rate: 1.05,
+  lang: 'en',
+  idlePollMs: 50,
+  // Screen-reader mode can't tell when NVDA finishes, so a contrast label gets this much room before its sound.
+  screenReaderLabelGapMs: 1500,
+};
+
+// Feedback (§7.3).
+export const CONTRAST_PAUSE_MS = 400;
