@@ -20,6 +20,8 @@ export type Settings = {
   morse: 'off' | 'vibration' | 'sound';
   /** Native only: volume keys act as Click / Replay instead of changing the system volume (§13.3). */
   volumeKeys: boolean;
+  /** Vibration patterns that confirm each answer and result (§13.9). */
+  haptics: boolean;
 };
 
 /** Every user action; buttons and keys both map onto these. */
@@ -94,6 +96,7 @@ export const DEFAULT_SETTINGS: Settings = {
   observer: false,
   morse: 'off',
   volumeKeys: true,
+  haptics: false,
 };
 
 const onboarded = isOnboarded();

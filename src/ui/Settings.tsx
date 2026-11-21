@@ -67,6 +67,14 @@ export function Settings({ onClose }: Props) {
         </select>
       </label>
 
+      <label>
+        Feel the answer
+        <select value={settings.haptics ? 'on' : 'off'} onChange={(e) => setSettings({ haptics: e.target.value === 'on' })}>
+          <option value="off">Off</option>
+          <option value="on">Vibrate for each answer and result</option>
+        </select>
+      </label>
+
       {isNative() && (
         <label>
           Volume buttons

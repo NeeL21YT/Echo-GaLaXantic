@@ -242,3 +242,16 @@ export const CLICK_COACH = {
   /** A good click gets a tone; after this many misses in a row the coach offers to move on. */
   missesBeforeOffer: 6,
 };
+
+// "Feel the answer" patterns (§13.9): alternating on/off milliseconds, starting with "on". Each must differ from the
+// others by count or length so they can be told apart by touch alone; keep each under maxTotalMs.
+export const HAPTIC = {
+  maxTotalMs: 700,
+  left: [70],                       // one short buzz
+  right: [70, 90, 70],              // two short buzzes
+  near: [30],                       // one very short tick
+  far: [320],                       // one long buzz
+  pass: [40, 50, 70, 50, 140],      // three buzzes, growing: "up"
+  miss: [200, 100, 50],             // long then short: "down"
+  bump: [120, 60, 120, 60, 120],    // three even buzzes
+} as const;

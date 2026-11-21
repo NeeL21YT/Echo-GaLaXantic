@@ -4,6 +4,7 @@
 import { CONTRAST_PAUSE_MS, MORSE, NARRATION, RENDER_VERSION, STEP_M, TURN_DEG } from '../config';
 import { start as startMic, stop as stopMic } from '../audio/micDetector';
 import { playMorse } from '../audio/morsePlayer';
+import { feel, feelAnswer } from './haptics';
 import { play, stopAll } from '../audio/player';
 import { bump, correct, footstep, levelUp, wrong } from '../audio/sfx';
 import { renderStimulus } from '../audio/stimulus';
@@ -204,6 +205,7 @@ async function answer(action: Action): Promise<boolean> {
     await say(phrases().clickFirst);
     return true;
   }
+  feelAnswer(action);
   const result = level.check(st.trial, value, st.pose, trialElapsed());
   await finishTrial(result, value);
   return true;
@@ -231,6 +233,7 @@ async function finishTrial(result: AnswerResult, answerValue: string | number | 
     elapsedS: trialElapsed(),
   };
   st.patch({ phase: 'feedback', results: [...st.results, result], lastResult: result });
+  feel(result.correct ? 'pass' : 'miss');
   await silenceSpeech();
   await (result.correct ? correct() : wrong());
   void playMorse(result.correct ? MORSE.pass : MORSE.miss, st.settings.morse);
@@ -339,6 +342,7 @@ async function stepBy(step: number): Promise<boolean> {
     const feedback = level.check(withMeta, 'bump', st.pose, trialElapsed());
     newJob();
     stopAll();
+    feel('bump');
     await bump();
     void playMorse(MORSE.bump, S().settings.morse);
     await say(`Bump. ${collisions}. ${feedback.explanation}`.trim());

@@ -25,6 +25,7 @@ export function SetupSummary() {
       )}
       <li className={micOn ? 'chip on' : 'chip'}>{micOn ? 'Mic on' : 'Mic off'}</li>
       <li className={settings.morse === 'off' ? 'chip' : 'chip on'}>{morse}</li>
+      <li className={settings.haptics ? 'chip on' : 'chip'}>{settings.haptics ? 'Feel the answer on' : 'Feel the answer off'}</li>
     </ul>
   );
 }

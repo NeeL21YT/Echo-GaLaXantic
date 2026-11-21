@@ -558,3 +558,6 @@ Echo must teach the technique, not only test it. Level select shows **Learn** (s
 
 ### 13.8 Touch-and-hold to hear (`input/readAloud.ts`)
 With our own voice on and no screen reader, holding a finger on a button, card, chip, heading or the message for 0.5 s reads it aloud and does **not** press it; a quick tap still presses. This lets a blind user feel their way round the screen. With TalkBack on it stands down, because the phone already reads what is touched. Gestures ignore touches that begin on these elements, so a read never also fires an action.
+
+### 13.9 Feel the answer (`speech/hapticPatterns.ts`, `state/haptics.ts`)
+Idea from V-Braille (Jayant et al., ASSETS 2010): distinct vibration patterns can be told apart by touch after minutes of familiarization. Settings `Feel the answer` (off by default) vibrates once per answer and once per result: left one short buzz · right two short · near one tick · far one long · pass three growing buzzes · miss long then short · bump three even buzzes. Patterns live in `config.ts` (`HAPTIC`), must all differ, and stay under 700 ms. Independent of Morse, which spells words; this only confirms.
