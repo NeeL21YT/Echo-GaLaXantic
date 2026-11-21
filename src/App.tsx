@@ -5,6 +5,7 @@ import { attachGestures } from './input/gestures';
 import { phrases } from './input/inputStyle';
 import { attachReadAloud } from './input/readAloud';
 import { attachKeyboard } from './input/keyboard';
+import { scanMenu } from './input/menuScan';
 import { actionForVolumeKey } from './input/volumeKeys';
 import { captureVolumeKeys, isScreenReaderOn, onScreenReaderChange, onVolumeKey, vibrate } from './native/echoNative';
 import { GESTURE } from './config';
@@ -51,6 +52,8 @@ export function App() {
   const practiceRef = useRef<HTMLDivElement>(null);
   const [reveal, setReveal] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsOpenRef = useRef(false);
+  settingsOpenRef.current = settingsOpen;
   const phase = useEcho((s) => s.phase);
   const levelId = useEcho((s) => s.levelId);
   const observer = useEcho((s) => s.settings.observer);
@@ -153,6 +156,18 @@ export function App() {
     if (!capture) return;
     return onVolumeKey((key) => {
       const st = useEcho.getState();
+      // On the level list there are no practice actions, so the keys scan the menu instead (§13.3).
+      if (st.phase === 'levelSelect' && !settingsOpenRef.current) {
+        scanMenu(key, (text) => {
+          if (st.settings.narration === 'voice') {
+            cancelSpeech();
+            void speak(text);
+          } else {
+            void say(text);
+          }
+        });
+        return;
+      }
       const valid = currentActions(st.phase);
       const action = actionForVolumeKey(key, valid, st.phase === 'ready');
       if (action) onActionRef.current(action);

@@ -177,7 +177,7 @@ export const GESTURE = {
   /** Confirmation tick so the user knows a gesture registered. */
   tickMs: 20,
   /** Holding a finger on a control this long reads it aloud instead of pressing it. Shorter than longPressMs so the two never clash. */
-  readAloudMs: 500,
+  readAloudMs: 450,
   /** A click arriving this soon after a read-aloud is the lift of that same touch, so it is swallowed. */
   suppressClickMs: 400,
 };

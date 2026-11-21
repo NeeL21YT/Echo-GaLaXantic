@@ -31,60 +31,84 @@ export function attachReadAloud(container: HTMLElement, { enabled, speak, onRead
   let timer: ReturnType<typeof setTimeout> | null = null;
   let startX = 0;
   let startY = 0;
+  /** True from the moment a read fires until that touch ends. */
+  let holding = false;
+  /** The pointer was cancelled before the read fired, so no click can follow this touch. */
+  let ended = false;
   let suppressUntil = 0;
 
-  const cancel = () => {
+  const clearTimer = () => {
     if (timer) clearTimeout(timer);
     timer = null;
   };
 
+  /** The touch has ended (lifted or cancelled): the click that may follow it must not press the control just read. */
+  const finishTouch = () => {
+    clearTimer();
+    if (holding) {
+      suppressUntil = performance.now() + GESTURE.suppressClickMs;
+      holding = false;
+    }
+  };
+
   const down = (e: PointerEvent) => {
-    if (e.pointerType === 'mouse' || !enabled()) return;
+    if (e.pointerType === 'mouse') return;
+    // A new touch starts clean: nothing from the last one may linger and swallow this one's click.
+    holding = false;
+    ended = false;
+    if (!enabled()) return;
     const target = e.target instanceof Element ? e.target.closest<HTMLElement>(READABLE_SELECTOR) : null;
     if (!target) return;
     startX = e.clientX;
     startY = e.clientY;
-    cancel();
+    clearTimer();
     timer = setTimeout(() => {
       timer = null;
       const label = spokenLabel(target);
       if (!label) return;
-      suppressUntil = performance.now() + GESTURE.suppressClickMs + 1000; // lifted later; see the click guard
+      holding = !ended;
       speak(label);
       onRead();
     }, GESTURE.readAloudMs);
   };
 
   const move = (e: PointerEvent) => {
-    if (timer && Math.hypot(e.clientX - startX, e.clientY - startY) > GESTURE.tapSlopPx) cancel();
+    // Moving away means a scroll or swipe, not a hold.
+    if (timer && Math.hypot(e.clientX - startX, e.clientY - startY) > GESTURE.tapSlopPx) clearTimer();
   };
 
-  const up = () => {
-    cancel();
-    // The lift of a read-aloud touch must not press the control it just read.
-    if (suppressUntil > 0) suppressUntil = performance.now() + GESTURE.suppressClickMs;
+  // Android starts its own long-press handling (text selection, context menu) at about the same moment and may then
+  // cancel the pointer. A cancel without movement is that, not a scroll, so it must not abort the read.
+  const cancelled = () => {
+    if (holding) finishTouch();
+    else if (timer) ended = true; // let the pending read still fire; no click will follow a cancelled pointer
+  };
+
+  const contextMenu = (e: Event) => {
+    if (e.target instanceof Element && e.target.closest(READABLE_SELECTOR) && enabled()) e.preventDefault();
   };
 
   const click = (e: MouseEvent) => {
-    if (suppressUntil > 0 && performance.now() < suppressUntil) {
+    if (holding || performance.now() < suppressUntil) {
       e.preventDefault();
       e.stopImmediatePropagation();
     }
-    suppressUntil = 0;
   };
 
   container.addEventListener('pointerdown', down);
   container.addEventListener('pointermove', move);
-  container.addEventListener('pointerup', up);
-  container.addEventListener('pointercancel', cancel);
+  container.addEventListener('pointerup', finishTouch);
+  container.addEventListener('pointercancel', cancelled);
+  container.addEventListener('contextmenu', contextMenu);
   // Capture phase, so the guard runs before React sees the click.
   container.addEventListener('click', click, true);
   return () => {
-    cancel();
+    clearTimer();
     container.removeEventListener('pointerdown', down);
     container.removeEventListener('pointermove', move);
-    container.removeEventListener('pointerup', up);
-    container.removeEventListener('pointercancel', cancel);
+    container.removeEventListener('pointerup', finishTouch);
+    container.removeEventListener('pointercancel', cancelled);
+    container.removeEventListener('contextmenu', contextMenu);
     container.removeEventListener('click', click, true);
   };
 }

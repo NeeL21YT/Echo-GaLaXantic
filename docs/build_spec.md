@@ -539,7 +539,7 @@ Active only when no screen reader is on. TalkBack takes over raw touch, and the 
 - Every recognised gesture gives a 20 ms vibration tick, so the user knows it registered.
 
 ### 13.3 Volume keys
-Native only. Volume up: Click · Volume down: Replay (or Next in feedback). A Settings switch gives the keys back to the system volume. Default: keys act as actions when no screen reader is on, system volume when one is.
+Native only. Practising: Volume up: Click · Volume down: Replay (or Next in feedback). **Level list (menu scanning):** Volume down moves to the next option, highlights it and speaks it with its place ("2 of 12"); Volume up chooses the highlighted option, or explains the keys if none is chosen yet. A Settings switch gives the keys back to the system volume. Default: keys act as actions when no screen reader is on, system volume when one is.
 
 ### 13.4 Morse feedback (`speech/morse.ts`, `audio/morsePlayer.ts`)
 Settings `Morse`: off · vibration · sound. It is added to the narration, never a replacement, and never plays over a stimulus or speech. Codes: pass `OK`, miss `TRY`, bump `B`, level start the level digit. Unit 120 ms; dash 3, gap 1, letter gap 3, word gap 7.
@@ -564,3 +564,5 @@ With our own voice on and no screen reader, holding a finger on a button, card, 
 
 ### 13.9 Feel the answer (`speech/hapticPatterns.ts`, `state/haptics.ts`)
 Idea from V-Braille (Jayant et al., ASSETS 2010): distinct vibration patterns can be told apart by touch after minutes of familiarization. Settings `Feel the answer` (off by default) vibrates once per answer and once per result: left one short buzz · right two short · near one tick · far one long · pass three growing buzzes · miss long then short · bump three even buzzes. Patterns live in `config.ts` (`HAPTIC`), must all differ, and stay under 700 ms. Independent of Morse, which spells words; this only confirms.
+
+Note: on Android a long press can make the browser cancel the pointer. A cancel without movement must not abort a pending read, and a cancelled touch must not leave the click guard armed (it would swallow the next tap).

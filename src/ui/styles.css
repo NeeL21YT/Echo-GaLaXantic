@@ -392,3 +392,24 @@ button:active:not(:disabled) {
   flex: none;
   padding-bottom: 0.5rem;
 }
+
+/* Touch-and-hold to hear (§13.8): without these, Android's own long-press (text selection, callout) fights ours. */
+.practice {
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.practice button,
+.practice .chip,
+.practice .blind-message,
+.practice h2 {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* The option the volume buttons are on (§13.3). A thick outline plus a fill, so it is clear to a sighted helper too. */
+.scan-current {
+  outline: 4px solid var(--accent);
+  outline-offset: 2px;
+  background: #10242a;
+}
