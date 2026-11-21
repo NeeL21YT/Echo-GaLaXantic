@@ -20,8 +20,8 @@ export type LessonPage = LessonStep[];
 export interface LessonDef {
   id: number;
   title: string;
-  /** Level that practises this skill; null for lessons about technique or real rooms. */
-  practiceLevel: LevelId | null;
+  /** Level that practises this skill, 'room' for the real room check, or null for lessons about technique. */
+  practiceLevel: LevelId | 'room' | null;
   pages: LessonPage[];
 }
 
@@ -44,11 +44,11 @@ export const LESSONS: LessonDef[] = [
         say('Keep it short and sharp, not loud. A short click gives a clear echo.'),
       ],
       [
-        say('Now you try. Hold the phone about a hand away and click with your tongue, slowly, once a second. I will listen and tell you how each click sounds.'),
+        say('Now you try. Hold the phone about a hand away and click with your tongue, slowly, once a second.'),
         { kind: 'coach', goodNeeded: CLICK_COACH.goodNeeded },
       ],
       [
-        say('One more tip. Keep your head still while you click, and turn it slowly between clicks. Your ears hear best in the direction your head points.'),
+        say('One more tip. Keep your head still while you click, and turn it slowly between clicks.'),
         say('Next lesson: what an echo can tell you.'),
       ],
     ],
@@ -66,9 +66,9 @@ export const LESSONS: LessonDef[] = [
       ],
       [
         say('Hear the difference? The sound leans toward the wall. Listen for which ear gets the bigger, earlier echo.'),
-        say('Press Hear again to repeat the examples, or Continue.'),
+        say('Hear again repeats the examples. Continue moves on.'),
       ],
-      [say('Now practise. Level 1 plays one wall and asks Left or Right. After every answer I tell you what to listen for.')],
+      [say('Now practise. Level one plays one wall and asks Left or Right. After every answer I tell you what to listen for.')],
     ],
   },
   {
@@ -77,16 +77,16 @@ export const LESSONS: LessonDef[] = [
     practiceLevel: 2,
     pages: [
       [
-        say('A close wall comes back sooner, louder and brighter. Here is a wall one metre ahead.'),
+        say('A near wall comes back sooner, louder and brighter. Here is a wall one metre ahead.'),
         demo('Wall one metre ahead', frontWall(1)),
         say('Now a wall three metres ahead.'),
         demo('Wall three metres ahead', frontWall(3)),
       ],
       [
-        say('Close is loud and bright. Far is soft and dull, and its echo takes longer to arrive.'),
+        say('Near is loud and bright. Far is soft and dull, and its echo takes longer to arrive.'),
         say('While you learn, Echo slows the echoes down so you can hear that delay. As you improve, the slowdown is taken away, until it is real speed.'),
       ],
-      [say('Now practise. Level 2 asks whether the wall is near or far.')],
+      [say('Now practise. Level two asks whether the wall is near or far.')],
     ],
   },
   {
@@ -101,10 +101,10 @@ export const LESSONS: LessonDef[] = [
         demo('Doorway ahead', room(4, 4, [{ wall: 'N', center: 0, width: 1.2 }])),
       ],
       [
-        say('Hear the hole in the sound? The front feels hollow. Turn your head until you find that hollow spot.'),
-        say('Press Hear again to compare once more, or Continue.'),
+        say('Hear the quiet side? The doorway is where the sound goes quiet. Turn your head until you find the quiet side.'),
+        say('Hear again repeats the examples. Continue moves on.'),
       ],
-      [say('Now practise. Level 3 hides a doorway in the room. Turn, click, and face the quiet gap.')],
+      [say('Now practise. Level three hides a doorway in the room. Turn, click, and face the quiet side.')],
     ],
   },
   {
@@ -120,26 +120,26 @@ export const LESSONS: LessonDef[] = [
       ],
       [
         say('Hear the small extra echo? That is the pole.'),
-        say('When you walk, take small steps and click at every step. If the sound suddenly gets louder, stop. Something is close.'),
+        say('When you walk, take small steps and click at every step. If the sound suddenly gets louder, stop. Something is near.'),
       ],
-      [say('Now practise. Level 4 asks you to find a pole. Level 5 asks you to walk out of a corridor.')],
+      [say('Now practise. Level four asks you to walk the corridor past a pole without a bump. Level five asks you to find the exit.')],
     ],
   },
   {
     id: 6,
     title: 'Practise in a real room',
-    practiceLevel: null,
+    practiceLevel: 'room',
     pages: [
       [
         say('Now take it into a real room. Choose a room you know well, with a clear floor. Practise with a friend nearby, or with your cane.'),
-        say('Echo is for practice. Keep using your cane, guide or other tools to get around.'),
+        say('Echo is practice. It is not a navigation aid. Keep using your cane or a friend to get around.'),
       ],
       [
         say('Stand about an arm\'s length from a wall, facing it. Click. Remember how it sounds.'),
         say('Step back one small step and click again. Notice how the echo gets softer and duller. Repeat, one step at a time.'),
       ],
       [
-        say('Next, stand in a doorway or beside one. Click while you turn your head slowly. Listen for the hollow spot where the open space is.'),
+        say('Next, stand in a doorway or beside one. Click while you turn your head slowly. Listen for the quiet side, where the doorway is.'),
         say('Check with your hand or your friend. Checking is how your ear learns.'),
       ],
       [

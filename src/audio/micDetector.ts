@@ -13,15 +13,32 @@ type Detector = {
 };
 
 let det: Detector | null = null;
+/** Bumped by every stop, so a start still waiting on the permission prompt can tell it was cancelled. */
+let generation = 0;
 let report = 'Microphone is off.';
 
-/** Starts listening; calls onClick for each detected click. Throws if permission is denied. */
-export async function start(onClick: () => void): Promise<void> {
+/**
+ * Starts listening; calls onClick for each detected click. Throws if permission is denied.
+ * onEnded runs once if the phone or browser takes the microphone away mid-run (permission revoked, another app, unplugged).
+ */
+export async function start(onClick: () => void, onEnded?: () => void): Promise<void> {
   stop();
+  const started = generation;
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
   });
+  // Cancelled while the permission prompt was open: the mic must not stay on behind the learner's back.
+  if (started !== generation) {
+    for (const t of stream.getTracks()) t.stop();
+    throw new Error('microphone start cancelled');
+  }
   const track = stream.getAudioTracks()[0];
+  track?.addEventListener('ended', () => {
+    // Only the stream that is still current counts; stop() and a restart release old tracks on purpose.
+    if (det?.stream !== stream) return;
+    stop();
+    onEnded?.();
+  });
   const s = track?.getSettings();
   const onOff = (v: boolean | string | undefined) =>
     v === undefined ? 'unknown' : typeof v === 'string' ? v : v ? 'on' : 'off';
@@ -64,6 +81,7 @@ export async function start(onClick: () => void): Promise<void> {
 }
 
 export function stop(): void {
+  generation += 1;
   if (!det) return;
   cancelAnimationFrame(det.raf);
   det.source.disconnect();

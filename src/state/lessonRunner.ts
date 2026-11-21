@@ -1,13 +1,22 @@
-// Teaching flow (§13.7): lesson → pages → (say | demo)*, then wait for Continue. Shares the runner's narration
-// routing and render path so a lesson example is exactly what a level would play.
-import { CLICK_COACH, CONTRAST_PAUSE_MS } from '../config';
+// Teaching flow (§13.7): lesson → pages → (say | demo)*, then a spoken "what to press next" and a wait for the learner.
+// Shares the runner's narration routing and render path so a lesson example is exactly what a level would play.
+// Every page carries a job number; anything that leaves or restarts the page bumps it, so stale speech, sounds and
+// the microphone can never carry on behind the learner's back.
+import { CLICK_COACH, COACH_QUIET_AFTER_TONE_MS, CONTRAST_PAUSE_MS } from '../config';
 import { startClickCoach, stopClickCoach } from '../audio/clickCoach';
 import { play, stopAll } from '../audio/player';
 import { correct } from '../audio/sfx';
+import { currentInputStyle } from '../input/inputStyle';
 import { getLesson, LESSONS, type LessonPage } from '../levels/lessons';
 import { CLICK_ADVICE } from '../speech/clickText';
+import {
+  COACH_BREATH, COACH_LISTENING, COACH_MIC_OFF, COACH_NO_MIC, coachDone, helpThenAgain, lessonHelp, lessonOpening, pageHint,
+} from '../speech/lessonText';
+import { cancel } from '../speech/narrator';
 import { markLessonDone } from './progress';
-import { renderFrom, say, sayLabel, silenceSpeech, startLevel } from './runner';
+import { startRoom } from './roomRunner';
+import { ensureMicPermission, goToLevelSelect, renderFrom, say, sayLabel, silenceSpeech, startLevel } from './runner';
+import { estimateReadMs, sayAndSettle, settleMicRefusal } from './settle';
 import { useEcho, type Action } from './store';
 
 const S = () => useEcho.getState();
@@ -29,59 +38,94 @@ function endCoach(): void {
 
 /** Listens to the learner's own clicks and tells them how each one sounded, until enough are good or the page ends. */
 async function runCoach(goodNeeded: number, job: number): Promise<void> {
+  const alive = () => job === pageJob;
   let good = 0;
   let tries = 0;
   let missesInRow = 0;
+  /** Clicks heard before this moment are our own tone or voice leaking into the mic, not the learner. */
+  let quietUntil = 0;
+  let finish: () => void = () => undefined;
   const finished = new Promise<void>((resolve) => {
+    finish = resolve;
     endCoachWait = resolve;
   });
+
+  if (!(await ensureMicPermission())) {
+    // The runner has just explained the refusal, so only the way forward is added.
+    await settleMicRefusal(alive);
+    if (alive()) await sayAndSettle(COACH_MIC_OFF, alive);
+    return;
+  }
+  if (!alive()) return;
   try {
     await startClickCoach((report) => {
-      if (job !== pageJob) return;
+      if (!alive() || Date.now() < quietUntil) return;
       tries += 1;
       if (report.verdict === 'good') {
         good += 1;
         missesInRow = 0;
-        // A tone, not speech, so a run of good clicks isn't interrupted.
+        // A tone, not speech, so a run of good clicks isn't interrupted; the mic must not take it for a click.
+        quietUntil = Date.now() + COACH_QUIET_AFTER_TONE_MS;
         void correct();
         if (good >= goodNeeded) {
           stopClickCoach();
-          void say(`${good} good clicks out of ${tries}. Nice work. Press Continue.`).then(() => endCoachWait?.());
+          void sayAndSettle(coachDone(good, tries), alive).then(finish);
         }
         return;
       }
       missesInRow += 1;
+      let advice = CLICK_ADVICE[report.verdict];
       if (missesInRow >= CLICK_COACH.missesBeforeOffer) {
         missesInRow = 0;
-        void say('Take a breath. Rest your tongue tip just behind your top front teeth, then pull it down sharply. Or press Continue to move on.');
-      } else {
-        void say(CLICK_ADVICE[report.verdict]);
+        advice = COACH_BREATH;
       }
+      // With a screen reader the phone's speaker reads the advice aloud, and the mic would hear it.
+      if (S().settings.narration === 'screenreader') quietUntil = Date.now() + estimateReadMs(advice);
+      void say(advice);
     });
   } catch {
-    await say('The microphone is blocked, so I cannot hear your clicks. Practise without me: click ten times, slowly, and listen to each one. Press Continue when you are ready.');
+    if (alive()) await sayAndSettle(COACH_NO_MIC, alive);
     return;
   }
+  if (!alive()) return;
+  quietUntil = Date.now() + (S().settings.narration === 'screenreader' ? estimateReadMs(COACH_LISTENING) : 0);
+  await say(COACH_LISTENING);
   await finished;
 }
 
-async function playPage(page: LessonPage, job: number): Promise<void> {
+async function playPage(page: LessonPage, job: number, opening: string | null): Promise<void> {
+  const alive = () => job === pageJob;
   await silenceSpeech();
+  if (opening) await sayAndSettle(opening, alive);
   for (const step of page) {
-    if (job !== pageJob) return;
+    if (!alive()) return;
     if (step.kind === 'say') {
-      await say(step.text);
+      await sayAndSettle(step.text, alive);
     } else if (step.kind === 'coach') {
       await runCoach(step.goodNeeded, job);
     } else {
       await sayLabel(step.label);
-      if (job !== pageJob) return;
+      if (!alive()) return;
       const { buffer } = await renderFrom(step.world, step.pose, DEMO_SEED);
-      if (job !== pageJob) return;
+      if (!alive()) return;
+      // A focus label may have started while the offline render was pending.
+      await silenceSpeech();
+      if (!alive()) return;
       await play(buffer);
+      if (!alive()) return;
       await sleep(CONTRAST_PAUSE_MS);
     }
   }
+  if (!alive()) return;
+  const st = S();
+  if (st.lessonId === null) return;
+  const lesson = getLesson(st.lessonId);
+  await say(pageHint(currentInputStyle(), {
+    page: st.lessonPage + 1,
+    pages: lesson.pages.length,
+    practiceLevel: lesson.practiceLevel,
+    hasNextLesson: LESSONS.some((l) => l.id === lesson.id + 1),
+  }));
 }
 
 function present(): void {
@@ -93,7 +137,19 @@ function present(): void {
   const job = ++pageJob;
   stopAll();
   endCoach();
-  void playPage(page, job);
+  void playPage(page, job, st.lessonPage === 0 ? lessonOpening(lesson.id, lesson.title) : null).catch((err: unknown) => {
+    console.error(err);
+    if (job === pageJob) void say('Something went wrong with this page. You can hear it again, or go back to the level list.', { isError: true });
+  });
+}
+
+/** Stops everything a lesson started: its page, its sounds, its speech and the click-coach microphone. */
+export function abortTeaching(): void {
+  pageJob++;
+  stopAll();
+  endCoach();
+  cancel();
+  if (S().lessonId !== null) S().patch({ lessonId: null, lessonPage: 0 });
 }
 
 export function startLesson(id: number): void {
@@ -113,8 +169,8 @@ async function leaveLesson(): Promise<void> {
   pageJob++;
   stopAll();
   endCoach();
-  S().patch({ phase: 'levelSelect', lessonId: null, lessonPage: 0 });
-  await say('Choose a lesson or a level.');
+  S().patch({ lessonId: null, lessonPage: 0 });
+  await goToLevelSelect();
 }
 
 /** Handles an action while a lesson is open; returns true when the action was used. */
@@ -141,16 +197,25 @@ export function lessonAction(action: Action): boolean {
       // "Practise this" on the last page of a lesson that has a matching level.
       if (isLastPage() && lesson.practiceLevel !== null) {
         markLessonDone(lesson.id);
-        void startLevel(lesson.practiceLevel);
+        // The page may still be speaking; it must not carry on over the level's own introduction.
+        abortTeaching();
+        if (lesson.practiceLevel === 'room') startRoom();
+        else void startLevel(lesson.practiceLevel);
         return true;
       }
       return false;
     case 'levelSelect':
       void leaveLesson();
       return true;
-    case 'help':
-      void say('Continue goes to the next page. Hear again repeats this page. Levels leaves the lesson.');
+    case 'help': {
+      // Help stops the page, or the page's next sentence would cut the help off.
+      pageJob++;
+      stopAll();
+      endCoach();
+      const style = currentInputStyle();
+      void say(`${lessonHelp(style)} ${helpThenAgain(style)}`);
       return true;
+    }
     default:
       return false;
   }

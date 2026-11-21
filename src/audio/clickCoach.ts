@@ -14,13 +14,21 @@ type Coach = {
 };
 
 let coach: Coach | null = null;
+/** Bumped by every stop, so a start still waiting on the permission prompt can tell it was cancelled. */
+let generation = 0;
 
 /** Starts listening; onClick gets one report per detected click. Throws if the microphone is blocked. */
 export async function startClickCoach(onClick: (report: ClickReport) => void): Promise<void> {
   stopClickCoach();
+  const started = generation;
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
   });
+  // The learner left the page while the permission prompt was open: release the mic, do not start listening.
+  if (started !== generation) {
+    for (const t of stream.getTracks()) t.stop();
+    return;
+  }
   const ctx = getAudioContext();
   const rate = ctx.sampleRate;
   const pre = Math.round((CLICK_COACH.preMs / 1000) * rate);
@@ -74,6 +82,7 @@ export async function startClickCoach(onClick: (report: ClickReport) => void): P
 }
 
 export function stopClickCoach(): void {
+  generation += 1;
   if (!coach) return;
   coach.processor.onaudioprocess = null;
   coach.source.disconnect();
