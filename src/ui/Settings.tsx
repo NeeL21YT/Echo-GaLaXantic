@@ -1,5 +1,6 @@
 // Settings (§9.5/P6): stretch, narration, click source, volume, mic report, redo setup, reset progress.
 import { useState } from 'react';
+import { isNative } from '../native/echoNative';
 import { STRETCH_STEPS } from '../config';
 import { getSettingsReport } from '../audio/micDetector';
 import { spokenNumber } from '../levels/feedback';
@@ -53,6 +54,31 @@ export function Settings({ onClose }: Props) {
           <option value="screenreader">My screen reader</option>
         </select>
       </label>
+
+      <label>
+        Morse code feedback
+        <select
+          value={settings.morse}
+          onChange={(e) => setSettings({ morse: e.target.value as 'off' | 'vibration' | 'sound' })}
+        >
+          <option value="off">Off</option>
+          <option value="vibration">Vibration</option>
+          <option value="sound">Beeps</option>
+        </select>
+      </label>
+
+      {isNative() && (
+        <label>
+          Volume buttons
+          <select
+            value={settings.volumeKeys ? 'actions' : 'system'}
+            onChange={(e) => setSettings({ volumeKeys: e.target.value === 'actions' })}
+          >
+            <option value="actions">Up clicks, down replays</option>
+            <option value="system">Change the phone volume</option>
+          </select>
+        </label>
+      )}
 
       <label>
         Click source

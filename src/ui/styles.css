@@ -202,3 +202,20 @@ button:disabled {
   gap: 0.75rem;
   align-items: center;
 }
+
+/* Gestures (§13.2): while practising, swipes and taps belong to Echo, so the page must not scroll or select text. */
+.practice.gesture-surface {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Phones (§13): stack the observer view under the blind view instead of splitting the screen. */
+@media (max-width: 700px) {
+  .layout.split {
+    grid-template-columns: 1fr;
+  }
+  .blind-view {
+    padding: 1.25rem;
+  }
+}

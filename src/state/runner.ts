@@ -1,8 +1,9 @@
 // Phase machine (§8.1): onboarding → levelSelect → intro → ready ⇄ clicking/moving → feedback → next | summary.
 // Every async step (render, speech, contrast) carries a job id; anything that changes phase bumps it so stale
 // work started before Esc/Next can never play or overwrite state.
-import { CONTRAST_PAUSE_MS, NARRATION, RENDER_VERSION, STEP_M, TURN_DEG } from '../config';
+import { CONTRAST_PAUSE_MS, MORSE, NARRATION, RENDER_VERSION, STEP_M, TURN_DEG } from '../config';
 import { start as startMic, stop as stopMic } from '../audio/micDetector';
+import { playMorse } from '../audio/morsePlayer';
 import { play, stopAll } from '../audio/player';
 import { bump, correct, footstep, levelUp, wrong } from '../audio/sfx';
 import { renderStimulus } from '../audio/stimulus';
@@ -112,6 +113,7 @@ export async function startLevel(id: LevelId): Promise<void> {
     stretchOffer: null,
   });
   const title = /[.?!]$/.test(level.title) ? level.title : `${level.title}.`;
+  void playMorse(String(id), S().settings.morse);
   await say(`Level ${id}. ${title} ${level.intro} Press Enter to begin.`);
 }
 
@@ -228,6 +230,7 @@ async function finishTrial(result: AnswerResult, answerValue: string | number | 
   st.patch({ phase: 'feedback', results: [...st.results, result], lastResult: result });
   await silenceSpeech();
   await (result.correct ? correct() : wrong());
+  void playMorse(result.correct ? MORSE.pass : MORSE.miss, st.settings.morse);
   if (!isCurrent(id)) return;
   const hint = st.trialIndex === 0 ? ` Press R to replay${result.contrast ? ', C to compare' : ''}, or N for next.` : '';
   await say(result.explanation + hint);
@@ -334,6 +337,7 @@ async function stepBy(step: number): Promise<boolean> {
     newJob();
     stopAll();
     await bump();
+    void playMorse(MORSE.bump, S().settings.morse);
     await say(`Bump. ${collisions}. ${feedback.explanation}`.trim());
     return true;
   }

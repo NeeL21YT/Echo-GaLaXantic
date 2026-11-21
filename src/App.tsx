@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { unlockAudio } from './audio/context';
 import { setVolume } from './audio/player';
+import { attachGestures } from './input/gestures';
 import { attachKeyboard } from './input/keyboard';
+import { actionForVolumeKey } from './input/volumeKeys';
+import { captureVolumeKeys, isScreenReaderOn, onScreenReaderChange, onVolumeKey, vibrate } from './native/echoNative';
+import { GESTURE } from './config';
 import { cancel as cancelSpeech, initNarrator } from './speech/narrator';
 import { saveSettings } from './state/progress';
 import { Announcer } from './speech/Announcer';
@@ -83,6 +87,57 @@ export function App() {
     };
   }, []);
 
+  const screenReaderOn = useEcho((s) => s.screenReaderOn);
+  const volumeKeys = useEcho((s) => s.settings.volumeKeys);
+
+  // Touch gestures (§13.2). With a screen reader on, the OS keeps raw touch, so the real buttons are the way in.
+  useEffect(() => {
+    const el = practiceRef.current;
+    if (!el || screenReaderOn) return;
+    const valid = () => (useEcho.getState().phase === 'lesson' ? lessonActions() : validActions());
+    return attachGestures(el, (a) => onActionRef.current(a), valid, () => void vibrate([GESTURE.tickMs]));
+  }, [screenReaderOn]);
+
+  // Volume keys (§13.3), native only: keys act as Click and Replay unless a screen reader needs them for its own volume.
+  useEffect(() => {
+    const capture = volumeKeys && !screenReaderOn;
+    void captureVolumeKeys(capture);
+    if (!capture) return;
+    return onVolumeKey((key) => {
+      const st = useEcho.getState();
+      const valid = st.phase === 'lesson' ? lessonActions() : validActions();
+      const action = actionForVolumeKey(key, valid, st.phase === 'ready');
+      if (action) onActionRef.current(action);
+    });
+  }, [volumeKeys, screenReaderOn]);
+
+  // Device screen reader (§13.5): when TalkBack is on, our backup voice stays silent and the screen reader narrates.
+  useEffect(() => {
+    let before: 'voice' | 'screenreader' | null = null;
+    const apply = (on: boolean) => {
+      const st = useEcho.getState();
+      if (on === st.screenReaderOn) return;
+      st.patch({ screenReaderOn: on });
+      if (on) {
+        before = st.settings.narration;
+        st.setSettings({ narration: 'screenreader' });
+      } else if (before !== null) {
+        st.setSettings({ narration: before });
+        before = null;
+      }
+    };
+    void isScreenReaderOn().then(apply);
+    const off = onScreenReaderChange(apply);
+    const recheck = () => {
+      if (!document.hidden) void isScreenReaderOn().then(apply);
+    };
+    document.addEventListener('visibilitychange', recheck);
+    return () => {
+      off();
+      document.removeEventListener('visibilitychange', recheck);
+    };
+  }, []);
+
   // Persist settings and apply side effects; switching to screen-reader mode silences our own voice at once.
   useEffect(() => {
     setVolume(useEcho.getState().settings.volume);
@@ -109,11 +164,13 @@ export function App() {
   const hideWorld =
     levelId !== null && HIDDEN_UNTIL_ANSWERED.has(levelId) && phase === 'ready' && !reveal;
 
+  const gestureSurface = !screenReaderOn && !settingsOpen && phase !== 'onboarding' && phase !== 'levelSelect';
+
   return (
     <div className={observer ? 'layout split' : 'layout'}>
       <div
         ref={practiceRef}
-        className="practice"
+        className={gestureSurface ? 'practice gesture-surface' : 'practice'}
         role="application"
         aria-label="Echo practice area. Press H for help."
         tabIndex={0}

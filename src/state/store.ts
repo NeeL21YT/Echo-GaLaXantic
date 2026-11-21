@@ -16,6 +16,10 @@ export type Settings = {
   clickSource: ClickSource;
   volume: number;
   observer: boolean;
+  /** Extra feedback as Morse code, added to the narration (§13.4). */
+  morse: 'off' | 'vibration' | 'sound';
+  /** Native only: volume keys act as Click / Replay instead of changing the system volume (§13.3). */
+  volumeKeys: boolean;
 };
 
 /** Every user action; buttons and keys both map onto these. */
@@ -67,6 +71,8 @@ export type EchoState = {
   shotId: number;
   stretchOffer: number | null;
   settings: Settings;
+  /** Native only: TalkBack or another screen reader is on, so Echo's own voice and touch gestures stand down. */
+  screenReaderOn: boolean;
   micOn: boolean;
   /** Tongue clicks detected this session (onboarding shows the count). */
   micClicks: number;
@@ -84,6 +90,8 @@ export const DEFAULT_SETTINGS: Settings = {
   clickSource: 'key',
   volume: 1,
   observer: false,
+  morse: 'off',
+  volumeKeys: true,
 };
 
 const onboarded = isOnboarded();
@@ -114,6 +122,7 @@ export const useEcho = create<EchoState>()((set) => ({
   stretchOffer: null,
   // The mic needs a fresh permission grant each session, so every session starts on the Space key.
   settings: { ...DEFAULT_SETTINGS, ...loadSettings(), clickSource: 'key' },
+  screenReaderOn: false,
   micOn: false,
   micClicks: 0,
   message: onboarded ? 'Welcome back. Choose a level.' : 'Echo. Press Start.',
