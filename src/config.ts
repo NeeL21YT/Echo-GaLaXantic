@@ -138,3 +138,14 @@ export const MULBERRY32 = {
   mixMask: 61,
   uint32Range: 0x1_0000_0000,
 } as const;
+
+// Trial seed mixing and spoken direction thresholds; these do not change the echo model.
+export const LEVEL_FEEDBACK = {
+  trialSeedMix: 0x9e3779b1,
+  fullTurnDeg: 360,
+  degreeRoundStep: 5,
+  behindDeg: 150,
+  slightlyDeg: 30,
+  wallAheadDeg: 45,
+  numberBase: 10, // Decimal groups for spoken counts and time limits.
+} as const;
