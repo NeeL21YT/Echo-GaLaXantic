@@ -1,0 +1,59 @@
+// Every tunable number in Echo lives here (CLAUDE.md: no magic numbers elsewhere).
+// Changing any value that affects a rendered stimulus means bumping RENDER_VERSION.
+
+export const SPEED_OF_SOUND = 343;          // m/s
+export const RAY_COUNT = 72;                // one every 5°
+export const RAY_STEP_DEG = 360 / RAY_COUNT;
+export const MAX_RANGE_M = 8;               // hits must be strictly closer than this
+export const MIN_DIST_M = 0.3;              // clamp to avoid gain blow-up
+export const MAX_VOICES = 24;
+export const MERGE_AZ_BIN_DEG = 15;
+export const MERGE_DIST_BIN_M = 0.25;
+
+export const ECHO_GAIN_SCALE = 1.0;         // TUNE at the hour-10 gate (deck formula × this)
+export const DIRECT_CLICK_GAIN = 0.5;       // direct path in key mode; 0 in mic mode
+export const LOWPASS_NUMERATOR_HZ = 9000;   // cutoff = 9000 / (1 + d)
+export const LOWPASS_Q = 0.707;
+
+export const REFLECTANCE = { wall: 0.9, pole: 0.7 } as const;
+
+export const STRETCH_STEPS = [8, 6, 4, 3, 2, 1.5, 1] as const;
+export const DEFAULT_STRETCH = 4;
+export const PASSES_TO_SUGGEST_LOWER = 3;
+
+export const MASTER_GAIN = 0.8;
+export const LIMITER = { threshold: -3, knee: 0, ratio: 20, attack: 0.001, release: 0.1 };
+export const SAMPLE_RATE = 48000;
+export const STIMULUS_TAIL_S = 0.1;
+
+export const STEP_M = 0.5;                  // W/S
+export const TURN_DEG = 15;                 // A/D
+export const PLAYER_RADIUS_M = 0.25;
+export const POLE_RADIUS_M = 0.15;
+
+export const MIC = {
+  highpassHz: 1500,
+  minPeak: 0.15,
+  floorMultiplier: 8,
+  floorEmaAlpha: 0.05,
+  refractoryMs: 300,
+};
+
+export const RENDER_VERSION = 1;            // bump when the echo model changes; logged per trial
+
+// --- Additions beyond spec §4 (see CLAUDE.md Decisions log) ---
+
+// Hits closer than this are treated as numerical noise from a ray starting on a surface.
+export const HIT_EPSILON_M = 1e-6;
+
+// Reference click (§6.2).
+export const CLICK = {
+  durationS: 0.004,
+  freqHz: 3200,
+  decayTauS: 0.0006,
+  noiseMix: 0.15,
+  peak: 0.8,
+};
+
+// A rendered stimulus peak above this logs a warning (never rescaled).
+export const CLIP_WARN_PEAK = 0.98;

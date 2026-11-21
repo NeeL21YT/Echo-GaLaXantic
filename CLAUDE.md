@@ -85,3 +85,15 @@ After hour 29 (see `build_spec.md` §11, Segment 7), only fix bugs. Decline new 
 Append one line per change: `YYYY-MM-DD HH:MM — what changed — why — RENDER_VERSION`.
 
 - 2026-11-21 — Initial spec. Deck formulas adopted. Doorway = gap. Offline-rendered stimuli. rolloffFactor 0. — RENDER_VERSION 1
+- 2026-11-21 20:30 — Deps: react/react-dom/@types pinned to 18; `vite` and `@types/react(-dom)` kept as build-time necessities; template eslint packages not installed — the allowlist omitted what the Vite template needs — RENDER_VERSION 1
+- 2026-11-21 20:30 — Offline: hand-written `public/sw.js` (no plugin), registered in prod only; Cache Storage used for app files only — §1/§12 require offline reload and no dependency may be added — RENDER_VERSION 1
+- 2026-11-21 20:30 — Range: a hit counts only if `HIT_EPSILON_M < d < MAX_RANGE_M` (strict), so the 16 m box walls at exactly 8 m stay silent — §5.5 vs §5.2 boundary — RENDER_VERSION 1
+- 2026-11-21 20:30 — Coordinates: worlds centred on the origin, dir = (sin θ, cos θ), bearing = atan2(dx, dy); Canvas flips y only in ObserverView — §5.1 left origin and gap offsets unspecified — RENDER_VERSION 1
+- 2026-11-21 20:30 — Gaps: intervals clipped, sorted and unioned per wall before cutting; the L3 "0.75 m from a corner" applies to the gap edge — avoids negative or duplicate segments — RENDER_VERSION 1
+- 2026-11-21 20:30 — Merge: azimuth bins are circular (mod 360), zero-gain hits are dropped, weighted means use the original gains — avoids a ±180° split and ÷0 — RENDER_VERSION 1
+- 2026-11-21 20:30 — Collision: the player circle is swept along the step (not an endpoint-only check) — a 0.5 m step could tunnel through a thin wall — RENDER_VERSION 1
+- 2026-11-21 20:30 — Render: empty voices render direct click/silence (maxDelay defaults to 0); panner azimuth converted to radians — L1 "no wall" contrast — RENDER_VERSION 1
+- 2026-11-21 20:30 — Contrast labels: L2 says "Near … Far", L1/L3/L4 "Without … With"; L5 has no contrast; a bump in L4/L5 keeps the run going — §7.3 labels didn't fit L2 — RENDER_VERSION 1
+- 2026-11-21 20:30 — Keys: a focused `<button>` keeps its native Space/Enter and the container ignores it; `N` = next added to the map — avoids double actions — RENDER_VERSION 1
+- 2026-11-21 20:30 — Trial log adds `runId`; each entry is finalised when its feedback ends so replay/contrast counts are complete — §8.3 couldn't separate runs — RENDER_VERSION 1
+- 2026-11-21 20:30 — Click constants (`CLICK`), `HIT_EPSILON_M` and `CLIP_WARN_PEAK` added to config.ts — no magic numbers outside config — RENDER_VERSION 1
