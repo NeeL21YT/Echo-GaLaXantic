@@ -65,6 +65,16 @@ One to five metres from a wall, hold the phone flat at chest height with its top
 
 What it does not claim: the distance is to the *nearest surface*, which may be a table or a person rather than the wall you meant. Soft, cluttered or echoey rooms give weak or disagreeing echoes, and Echo then says so ("My pings disagreed in this room, so that distance is rough") rather than sounding certain. If the phone overrides the request to switch off echo cancellation, Echo warns that its distances may be wrong. The heading always describes the way the **phone** was held, never the way the echo came.
 
+### Places and marks
+
+At one standing spot, ping two ways, then **Save this place** (P). Echo keeps up to eight places on the phone, each remembered by what that spot sounds like.
+
+To record what you know is there, press **Mark what is here** (M), then **Wall** (3), **Doorway or opening** (4), **Step or drop** (5) or **Obstacle** (6). The mark keeps the facing and the distance measured at that moment. Up to twelve marks are kept per place.
+
+Come back to the same spot, ping two ways, and Echo says *"This looks like Place one"*. Replay reads back what you marked facing that way, and says when a measurement no longer matches a mark ("You marked a doorway here at one metre; it now measures two metres").
+
+This is recognition, not a map. Echo does not know where a place is, how far it is from another place, or which way to walk; it has no position, and step counting would drift too fast to help. Two places that sound alike are refused rather than guessed. Places need the phone's heading sensor, and Reset progress in Settings deletes them.
+
 ### Key map
 
 The practice area has focus while you use these keys. Every action is also a button.
@@ -85,7 +95,7 @@ The practice area has focus while you use these keys. Every action is also a but
 | H | Help: speaks the key map |
 | Esc | Back to the level list |
 
-In the real room check the same keys apply: Space pings, 1 and 2 are Near and Far, Enter locks in the guess, R repeats the numbers, N is the next trial, and Esc leaves and closes the microphone.
+In the real room check the same keys apply: Space pings, 1 and 2 are Near and Far, Enter locks in the guess, R repeats the numbers, N is the next trial, and Esc leaves and closes the microphone. Two more belong to that screen only: P saves the place you are standing in, M starts a mark, and then 3 to 6 choose Wall, Doorway or opening, Step or drop, or Obstacle.
 
 ### Training wheels
 
@@ -118,6 +128,7 @@ Docs: `docs/build_spec.md` (architecture, formulas, levels, UI, tests), `docs/id
 - The real room check measures the nearest surface, not the room. Furniture, doorways and people are surfaces too, and a soft or cluttered room can give weak echoes or no answer at all.
 - Real-room ranging accuracy has not been measured against a tape measure on a device. Synthetic tests place a wall within five centimetres; a phone is expected to read a few centimetres short, because time zero is the speaker-to-microphone path.
 - The direction pass says nothing about where an echo came from. A phone has one mono microphone, so it can only report the way the phone was held, and only when the phone is fairly flat.
+- Saved places are recognised by echo signature, not by position. Echo cannot say where a place is or how two places relate, and two spots that sound alike will not be named at all.
 - The Android app has been checked only to the extent recorded in [docs/mobile_status.md](docs/mobile_status.md). Nothing has been verified on a device that is not the team's Redmi Note 10.
 
 ## Credits

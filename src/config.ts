@@ -259,6 +259,30 @@ export const HEADING = {
   directionsForSummary: 2,
 } as const;
 
+// Places (real-room check): a spot remembered by its echo signature, plus what the learner marked there. There is no
+// indoor position sensor, so a place is recognised by what it sounds like — the distance to the nearest surface in
+// each facing — and never by coordinates.
+export const PLACES = {
+  maxPlaces: 8,
+  maxMarksPerPlace: 12,
+  /** Readings kept per place; two or three facings are enough to give a spot a shape. */
+  maxReadingsPerPlace: 6,
+  /** Two facings closer than this count as the same one. */
+  sameHeadingDeg: 20,
+  /** Two distances closer than this count as the same surface. */
+  sameDistanceM: 0.6,
+  /** Share of the fresh readings a saved place must explain before it is named. */
+  matchShare: 0.6,
+  /** Two saved places this close cannot be told apart, so neither is named. */
+  tieShare: 0.1,
+  /** Marks spoken in one message, so a replay stays short. */
+  marksSpoken: 2,
+  /** A mark may be spoken as "here" when it is within this of the facing. */
+  markHeadingDeg: 25,
+  /** A fresh measurement this much nearer or farther than a mark is called out as changed. */
+  contradictionM: 1,
+} as const;
+
 // Click coach (§13.7): judges the learner's own tongue click from the mic. Thresholds are first guesses for a phone
 // mic about 10-20 cm from the mouth with AGC off; tune them against real clicks on a device.
 export const CLICK_COACH = {

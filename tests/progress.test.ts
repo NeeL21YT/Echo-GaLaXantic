@@ -1,12 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_STRETCH, STORAGE_LIMITS } from '../src/config';
+import { DEFAULT_STRETCH, PLACES, STORAGE_LIMITS } from '../src/config';
+import type { Place } from '../src/engine/placeMap';
 import {
   LESSONS_KEY,
   ONBOARDED_KEY,
+  PLACES_KEY,
   RUNS_KEY,
   SETTINGS_KEY,
   TRIALS_KEY,
   getLessonsDone,
+  getPlaces,
+  savePlaces,
   getRuns,
   getTrials,
   isOnboarded,
@@ -287,6 +291,47 @@ describe('lessons', () => {
   });
 });
 
+describe('places', () => {
+  const spot = (over: Partial<Place> = {}): Place => ({
+    id: 'p1',
+    label: 'Place one',
+    readings: [{ headingDeg: 0, distanceM: 2 }, { headingDeg: 90, distanceM: 1.5 }],
+    marks: [{ kind: 'doorway', headingDeg: 90, distanceM: 1.5 }],
+    ...over,
+  });
+
+  it('saves and reads back a place with its shape and its marks', () => {
+    savePlaces([spot()]);
+    expect(getPlaces()).toEqual([spot()]);
+  });
+
+  it('normalises headings and drops entries it cannot use', () => {
+    fake.setItem(
+      PLACES_KEY,
+      JSON.stringify([
+        { id: 'a', label: 'Place one', readings: [{ headingDeg: 370, distanceM: 2 }], marks: [{ kind: 'nope', headingDeg: 0, distanceM: 1 }] },
+        { id: 'b', label: 'Place two', readings: [] },
+        { id: 'c', label: 'Place three', readings: [{ headingDeg: 0, distanceM: -1 }] },
+      ]),
+    );
+    const places = getPlaces();
+    expect(places).toHaveLength(1);
+    expect(places[0]?.readings[0]?.headingDeg).toBeCloseTo(10, 5);
+    expect(places[0]?.marks).toEqual([]);
+  });
+
+  it('keeps at most the configured number of places', () => {
+    const many = Array.from({ length: PLACES.maxPlaces + 3 }, (_, i) => spot({ id: `p${i}`, label: `Place ${i}` }));
+    savePlaces(many);
+    expect(getPlaces()).toHaveLength(PLACES.maxPlaces);
+  });
+
+  it('survives corrupt storage', () => {
+    fake.setItem(PLACES_KEY, '{');
+    expect(getPlaces()).toEqual([]);
+  });
+});
+
 describe('resetProgress', () => {
   it('deletes scores, runs and lessons but keeps settings and the setup flag', () => {
     logRun(run());
@@ -301,5 +346,13 @@ describe('resetProgress', () => {
     expect(levelStats(1, 4).lastScore).toBeNull();
     expect(loadSettings().volume).toBe(0.4);
     expect(isOnboarded()).toBe(true);
+  });
+
+  it('clears saved places too', () => {
+    savePlaces([
+      { id: 'p1', label: 'Place one', readings: [{ headingDeg: 0, distanceM: 2 }], marks: [] },
+    ]);
+    resetProgress();
+    expect(getPlaces()).toEqual([]);
   });
 });

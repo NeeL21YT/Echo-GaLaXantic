@@ -50,6 +50,12 @@ export const ACTION_LABELS: Record<Action, { label: string; key: string }> = {
   settings: { label: 'Settings', key: '' },
   help: { label: 'Help', key: 'H' },
   levelSelect: { label: 'Level list', key: 'Esc' },
+  savePlace: { label: 'Save this place', key: 'P' },
+  mark: { label: 'Mark what is here', key: 'M' },
+  markWall: { label: 'Wall', key: '3' },
+  markDoorway: { label: 'Doorway or opening', key: '4' },
+  markStep: { label: 'Step or drop', key: '5' },
+  markObstacle: { label: 'Obstacle', key: '6' },
 };
 
 type Score = { score: number; total: number } | null;

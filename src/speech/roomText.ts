@@ -99,7 +99,7 @@ const DEGREE_WORDS: Record<number, string> = {
 };
 
 /** A rounded turn as words; the rounding keeps the claim no finer than a step of the feet. */
-function turnWords(magnitudeDeg: number): string {
+export function turnWords(magnitudeDeg: number): string {
   const rounded = Math.round(magnitudeDeg / HEADING.turnRoundDeg) * HEADING.turnRoundDeg;
   return DEGREE_WORDS[rounded] ?? `about ${rounded} degrees`;
 }

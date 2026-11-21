@@ -44,7 +44,14 @@ export type Action =
   | 'observer'
   | 'settings'
   | 'help'
-  | 'levelSelect';
+  | 'levelSelect'
+  // Real-room places (§13.6): keep a spot by its echo signature, and mark what is there.
+  | 'savePlace'
+  | 'mark'
+  | 'markWall'
+  | 'markDoorway'
+  | 'markStep'
+  | 'markObstacle';
 
 export type EchoState = {
   phase: Phase;

@@ -1,7 +1,8 @@
 // Trial log, run results and settings in localStorage (§8.3). No backend: everything stays on this device.
 // Every read validates its data: a missing key, corrupt JSON, an older build's shape or a hand-edited value falls back
 // to a default instead of crashing, and every write is bounded and survives a full or blocked store.
-import { DEFAULT_STRETCH, PASSES_TO_SUGGEST_LOWER, STORAGE_LIMITS, STRETCH_STEPS } from '../config';
+import { DEFAULT_STRETCH, PASSES_TO_SUGGEST_LOWER, PLACES, STORAGE_LIMITS, STRETCH_STEPS } from '../config';
+import { isMarkKind, type Place, type PlaceMark, type PlaceReading } from '../engine/placeMap';
 import type { ClickSource, LevelId, Settings } from './store';
 
 export const TRIALS_KEY = 'echo.trials.v1';
@@ -9,6 +10,7 @@ export const RUNS_KEY = 'echo.runs.v1';
 export const SETTINGS_KEY = 'echo.settings.v1';
 export const ONBOARDED_KEY = 'echo.onboarded.v1';
 export const LESSONS_KEY = 'echo.lessons.v1';
+export const PLACES_KEY = 'echo.places.v1';
 
 export type TrialLogEntry = {
   ts: number;
@@ -255,9 +257,48 @@ export function markLessonDone(id: number): void {
   if (!done.includes(id)) writeBounded(LESSONS_KEY, [...done, id], STORAGE_LIMITS.maxLessons);
 }
 
-/** Deletes scores, runs and finished lessons. Settings and the setup flag are kept; Redo setup handles the flag. */
+/** Deletes scores, runs, finished lessons and saved places. Settings and the setup flag are kept; Redo setup
+ *  handles the flag. */
 export function resetProgress(): void {
   removeKey(TRIALS_KEY);
   removeKey(RUNS_KEY);
   removeKey(LESSONS_KEY);
+  removeKey(PLACES_KEY);
+}
+
+// ---------- places ----------
+
+const isHeading = (v: unknown): v is number => isNum(v);
+
+function toPlaceReading(v: unknown): PlaceReading | null {
+  if (!isRecord(v) || !isHeading(v.headingDeg) || !isNum(v.distanceM) || v.distanceM <= 0) return null;
+  return { headingDeg: ((v.headingDeg % 360) + 360) % 360, distanceM: v.distanceM };
+}
+
+function toMark(v: unknown): PlaceMark | null {
+  if (!isRecord(v) || !isMarkKind(v.kind) || !isHeading(v.headingDeg) || !isNum(v.distanceM) || v.distanceM <= 0) {
+    return null;
+  }
+  return { kind: v.kind, headingDeg: ((v.headingDeg % 360) + 360) % 360, distanceM: v.distanceM };
+}
+
+/** A saved place from storage, or null when it cannot be used. A place with no readings has no shape and is dropped. */
+function toPlace(v: unknown): Place | null {
+  if (!isRecord(v) || typeof v.id !== 'string' || typeof v.label !== 'string' || v.id === '') return null;
+  const readings = Array.isArray(v.readings)
+    ? v.readings.map(toPlaceReading).filter((r): r is PlaceReading => r !== null).slice(0, PLACES.maxReadingsPerPlace)
+    : [];
+  if (readings.length === 0) return null;
+  const marks = Array.isArray(v.marks)
+    ? v.marks.map(toMark).filter((m): m is PlaceMark => m !== null).slice(-PLACES.maxMarksPerPlace)
+    : [];
+  return { id: v.id.slice(0, 40), label: v.label.slice(0, 40), readings, marks };
+}
+
+export function getPlaces(): Place[] {
+  return readList(PLACES_KEY, toPlace, PLACES.maxPlaces);
+}
+
+export function savePlaces(places: readonly Place[]): void {
+  writeBounded(PLACES_KEY, places.slice(-PLACES.maxPlaces), PLACES.maxPlaces);
 }

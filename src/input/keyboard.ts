@@ -23,6 +23,16 @@ const KEY_MAP: Record<string, Action> = {
   Escape: 'levelSelect',
 };
 
+// Only the real-room check knows these; elsewhere the same keys stay unassigned, as they were before places existed.
+const ROOM_KEYS: Record<string, Action> = {
+  '3': 'markWall',
+  '4': 'markDoorway',
+  '5': 'markStep',
+  '6': 'markObstacle',
+  m: 'mark',
+  p: 'savePlace',
+};
+
 /** The KeyboardEvent.key that triggers each action; levels' answerKeys use the same names. */
 export const ACTION_KEY: Partial<Record<Action, string>> = Object.fromEntries(
   Object.entries(KEY_MAP).map(([key, action]) => [action, key]),
@@ -51,7 +61,8 @@ export function commandForKey(key: string, context: KeyboardContext, buttonFocus
       if (level) return { type: 'level', levelId: level.id };
     }
   }
-  const action = KEY_MAP[key] ?? KEY_MAP[normalized];
+  const roomKey = context === 'realRoom' ? ROOM_KEYS[key] ?? ROOM_KEYS[normalized] : undefined;
+  const action = roomKey ?? KEY_MAP[key] ?? KEY_MAP[normalized];
   return action ? { type: 'action', action } : null;
 }
 

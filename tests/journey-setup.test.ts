@@ -8,6 +8,7 @@ const h = vi.hoisted(() => ({
   measure: vi.fn(),
   startCoach: vi.fn(async () => undefined),
   stopCoach: vi.fn(),
+  heading: null as number | null,
 }));
 
 vi.mock('../src/speech/narrator', () => ({
@@ -29,6 +30,12 @@ vi.mock('../src/audio/ranger', () => ({
   audioFiltered: () => false, takeWasRough: () => false,
 }));
 vi.mock('../src/audio/clickCoach', () => ({ startClickCoach: h.startCoach, stopClickCoach: h.stopCoach }));
+vi.mock('../src/input/compass', () => ({
+  startCompass: vi.fn(),
+  stopCompass: vi.fn(),
+  currentHeading: () => h.heading,
+  absoluteSupported: () => true,
+}));
 vi.mock('../src/audio/player', () => ({ play: vi.fn(async () => undefined), stopAll: vi.fn(), isPlaying: () => false, setVolume: vi.fn() }));
 vi.mock('../src/audio/sfx', () => ({
   correct: vi.fn(async () => undefined), wrong: vi.fn(), bump: vi.fn(), levelUp: vi.fn(), footstep: vi.fn(), lrTest: vi.fn(),
@@ -46,6 +53,7 @@ const tick = (ms = 30) => new Promise((r) => setTimeout(r, ms));
 beforeEach(() => {
   h.spoken.length = 0;
   h.micGranted = true;
+  h.heading = null;
   vi.clearAllMocks();
   useEcho.getState().patch({ phase: 'levelSelect', lessonId: null, lessonPage: 0 });
   useEcho.getState().setSettings({ narration: 'voice', clickSource: 'key' });
@@ -141,6 +149,56 @@ describe('real room flow', () => {
     roomAction('levelSelect');
     expect(h.closeRanger).toHaveBeenCalled();
     expect(useEcho.getState().phase).toBe('levelSelect');
+  });
+});
+
+const spoke = (text: string) =>
+  vi.waitFor(() => expect(h.spoken.at(-1)).toContain(text), { timeout: 4000 });
+
+describe('places', () => {
+  it('keeps a spot, marks what is there, and recognises it on return', async () => {
+    h.measure.mockResolvedValue({ distanceM: 1.8 });
+    startRoom();
+    h.heading = 0;
+    roomAction('click');
+    await spoke('Your guess is one metre.');
+    h.heading = 90;
+    roomAction('click');
+    await spoke('Your guess is one metre.');
+
+    await tick(30); // the ping's own guard is released once its speech has started
+    roomAction('savePlace');
+    await spoke('Saved as Place one.');
+
+    roomAction('mark');
+    await spoke('What is here?');
+    roomAction('markDoorway');
+    await spoke('A doorway or opening marked, about ninety degrees to your right, one point eight metres.');
+
+    roomAction('answer');
+    await spoke('The wall was one point eight metres away.');
+    roomAction('replay');
+    await spoke('Here you marked a doorway or opening, about ninety degrees to your right, one point eight metres.');
+
+    // Walk away and come back to the same spot: two pings are enough to recognise it.
+    roomAction('next');
+    h.heading = 0;
+    roomAction('click');
+    await spoke('Your guess is one metre.');
+    h.heading = 90;
+    roomAction('click');
+    await spoke('This looks like Place one.');
+  });
+
+  it('needs two facings before a place can be kept', async () => {
+    h.measure.mockResolvedValue({ distanceM: 2 });
+    startRoom();
+    h.heading = 0;
+    roomAction('click');
+    await spoke('Your guess is one metre.');
+    await tick(30);
+    roomAction('savePlace');
+    await spoke('ping once more');
   });
 });
 

@@ -2,7 +2,7 @@
 
 Branch: `mobile`. Last updated: 22 November 2026.
 Test phone: Redmi Note 10 (M2101K7BI), Android 13. App: debug APK built from this branch.
-Checks: `npm run build` has 0 TypeScript errors. `npm test` passes 401 tests in 28 files.
+Checks: `npm run build` has 0 TypeScript errors. `npm test` passes 433 tests in 30 files.
 
 This file has seven parts:
 1. What was fixed.
@@ -108,6 +108,20 @@ Files: `src/engine/roomDirection.ts` (new), `src/input/compass.ts` (new), `src/e
 - **Disagreement is said out loud:** if the five pings span more than 80 cm, the reveal calls the distance rough instead of certain.
 - **A filtered microphone is named:** if the phone insists on echo cancellation, noise suppression or AGC, Echo says once per visit that its distances may be wrong.
 
+### Places and marks (22 November 2026)
+Files: `src/engine/placeMap.ts` (new), `src/speech/placeText.ts` (new), `src/state/roomRunner.ts`, `src/state/progress.ts`, `src/state/store.ts`, `src/input/keyboard.ts`, `src/ui/labels.ts`, `src/config.ts` (`PLACES`), `tests/placeMap.test.ts` (new), `tests/placeText.test.ts` (new), `tests/progress.test.ts`, `tests/journey-setup.test.ts`.
+- **What a place is:** after two facings at one standing spot, Save this place keeps what the spot sounds like — the distance to the nearest surface in each facing — in `localStorage` under `echo.places.v1`.
+  - Up to eight places, twelve marks each, bounded and validated like every other saved value.
+  - Coming back, two pings are matched against the saved signatures, and Echo says "This looks like Place one".
+  - Two places that fit equally well are not named; Echo says they sound too alike instead.
+- **What a mark is:** Mark what is here, then Wall, Doorway or opening, Step or drop, or Obstacle. The kind is stored with the facing and the distance measured at the time.
+  - Replay reads back the marks facing the current way.
+  - A fresh measurement that no longer matches a mark is reported, with no guess about why it changed.
+- **No position:** this is spot recognition, not a map. There is no GPS, no step counting, no route, and no distance or bearing between two places.
+- **Places need a heading.** With no sensor, or a stale reading, nothing is ever recognised and nothing is recorded. The keys 3 to 6, M and P exist only in the real-room check.
+- **Reset progress** in Settings now deletes saved places as well as scores.
+- **Fixed while adding this:** a ping cut off by Back left the check permanently "busy", so the next visit's first ping did nothing at all. The guard is now released on leaving, and an old ping can no longer clear a new visit's guard.
+
 ### Saved data and Settings (`src/state/progress.ts`, `src/ui/Settings.tsx`)
 - **Bad saved data:** corrupt or old saved data could crash or silence the app. Every stored value is now checked.
 - **Storage limits:**
@@ -185,6 +199,11 @@ The test phone blocks automated key presses, and the tests cannot hear sound. A 
 11. **Mic permission refused:** the Open settings button appears and opens the phone's settings.
 12. **Lesson 1 coach in a quiet room:** the verdicts (good, quiet, loud, long, dull) make sense. The thresholds in `CLICK_COACH` are first guesses.
 13. **TalkBack plus Morse sound:** Morse waits about one and a half seconds for TalkBack to finish. Check it does not talk over it.
+14. **Places:** at one spot, ping two ways, then Save this place.
+   - It should say "Saved as Place one." and offer the four mark kinds.
+   - Mark a doorway, lock in a guess, and Replay should read the mark back by facing and distance.
+   - Try again from the same spot: two pings should say "This looks like Place one."
+   - Two spots that sound alike should be refused, not guessed at.
 
 ---
 
@@ -210,6 +229,9 @@ None of these stop the app being used. They are listed so nothing is hidden.
 - **Real room, dropped audio:** the fill check catches gross loss, but a gap in the middle of one otherwise complete take can still slip through. Moving the capture to an `AudioWorklet` would fix it properly.
 - **Real room, no memory:** every visit starts from nothing; there are no saved spots.
 - **Real room, grading:** a guess is still judged even when the reading was just called rough.
+- **Places, no position:** saved places are echo signatures, not coordinates. Echo cannot say where a place is, how far it is from another place, or which way to walk, and it cannot tell that two visits ten steps apart are the same room.
+- **Places, lookalikes:** a room whose facings sound alike from two different spots cannot be told apart, so neither is named. Marks belong to the place they were made in, not to the object.
+- **Places, sensor:** with no heading sensor, or when the phone is held upright, nothing is saved or recognised. Places are Android-only for the same reason as direction, until the iPhone permission request is added.
 - **Spec deviations:** several are intentional and recorded in the `CLAUDE.md` Decisions log:
   - Gestures act on the message area.
   - Long lesson text is shown smaller than 48 px.
@@ -241,6 +263,7 @@ None of these stop the app being used. They are listed so nothing is hidden.
    - Distances too short by a consistent amount: expected bias from the speaker-to-microphone path; measure once against a tape measure before changing `RANGING`.
    - Erratic distances within one visit: that is what an `AudioWorklet` capture would fix; do not paper over it with thresholds.
 5. **Finish the doc drift in `build_spec.md`:** list the newer `config.ts` groups in its config appendix, and check the §13.8 deviation note.
+6. **Decide what places should grow into**, now that spot recognition exists: remembering a mark across places (for example "the doorway I marked is this same doorway"), or a spoken list of saved places. Do not add step counting to fake a position; it drifts within a few steps and cannot tell you that you have arrived somewhere.
 
 ---
 
@@ -299,9 +322,11 @@ This is the set-up used on the team's Windows PC.
   These are the checks listed in section 2.
 - **adb-mcp plugin:** it was installed, but its server failed to connect ("Connection closed"), so plain `adb` was used instead.
 - **Responsive layout:** measured in a headless Chromium browser (Brave) against `vite preview`, using the DevTools device-size emulation at each screen size. The measuring script was a throwaway local file and is not in the repo.
-- **Automated tests:** they grew from 283 to 401, in 28 files. The new tests include:
+- **Automated tests:** they grew from 283 to 433, in 30 files. The new tests include:
   - Real-room ranging, disagreement and direction maths (`tests/ranging.test.ts`, `tests/roomDirection.test.ts`).
   - Real-room wording (`tests/roomText.test.ts`).
+  - Place matching, marks and their wording (`tests/placeMap.test.ts`, `tests/placeText.test.ts`).
+  - The save, mark and recognise journey, and place storage (`tests/journey-setup.test.ts`, `tests/progress.test.ts`).
   - Full flow runs of Levels 1 to 5 (`tests/journey-levels.test.ts`).
   - Setup, lessons and the real room (`tests/journey-setup*.test.ts`, `tests/coachMicOff.test.ts`).
   - Saved data (`tests/progress.test.ts`).
@@ -324,4 +349,4 @@ This is the set-up used on the team's Windows PC.
 | `f3ae219` seg28 | Responsive layout for phone sizes and large text (landscape, tablet and desktop still to measure) |
 | `f31f861` seg29 | Docs: responsive status, remaining unfixed items, next-session plan |
 
-Uncommitted at the time of writing: the real-room direction and robustness pass described in section 1, plus the README and spec updates that go with it.
+Uncommitted at the time of writing: the real-room direction and robustness pass, and the places and marks pass, both described in section 1, plus the README and spec updates that go with them.

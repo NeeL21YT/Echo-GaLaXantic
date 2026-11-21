@@ -604,6 +604,14 @@ export function dispatch(action: Action, fromMic = false): boolean {
       return st.phase === 'onboarding' ? false : run(goToLevelSelect());
     case 'settings':
       return false;
+    // Room-only actions: roomAction handles these before dispatch is reached.
+    case 'savePlace':
+    case 'mark':
+    case 'markWall':
+    case 'markDoorway':
+    case 'markStep':
+    case 'markObstacle':
+      return false;
   }
 }
 
