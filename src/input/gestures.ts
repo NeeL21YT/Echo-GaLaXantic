@@ -2,6 +2,7 @@
 // With TalkBack on, the OS keeps raw touch for itself, so none of this fires; the real buttons are the way in.
 import { GESTURE } from '../config';
 import type { Action } from '../state/store';
+import { READABLE_SELECTOR } from './readAloud';
 
 export type Gesture =
   | { kind: 'tap'; count: number }
@@ -186,7 +187,7 @@ export function attachGestures(
       if (action && onAction(action)) onTick();
     },
   });
-  const isButton = (e: PointerEvent) => e.target instanceof Element && e.target.closest('button, select, input, a') !== null;
+  const isButton = (e: PointerEvent) => e.target instanceof Element && e.target.closest(`${READABLE_SELECTOR}, a`) !== null;
   const down = (e: PointerEvent) => {
     if (e.pointerType === 'mouse' || isButton(e)) return; // mouse and real controls keep their own behaviour
     rec.down(e.pointerId, e.clientX, e.clientY, e.timeStamp);

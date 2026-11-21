@@ -3,11 +3,12 @@ import { unlockAudio } from './audio/context';
 import { setVolume } from './audio/player';
 import { attachGestures } from './input/gestures';
 import { phrases } from './input/inputStyle';
+import { attachReadAloud } from './input/readAloud';
 import { attachKeyboard } from './input/keyboard';
 import { actionForVolumeKey } from './input/volumeKeys';
 import { captureVolumeKeys, isScreenReaderOn, onScreenReaderChange, onVolumeKey, vibrate } from './native/echoNative';
 import { GESTURE } from './config';
-import { cancel as cancelSpeech, initNarrator } from './speech/narrator';
+import { cancel as cancelSpeech, initNarrator, speak } from './speech/narrator';
 import { saveSettings } from './state/progress';
 import { Announcer } from './speech/Announcer';
 import { lessonAction, lessonActions } from './state/lessonRunner';
@@ -109,6 +110,23 @@ export function App() {
     const valid = () => currentActions(useEcho.getState().phase);
     return attachGestures(el, (a) => onActionRef.current(a), valid, () => void vibrate([GESTURE.tickMs]));
   }, [screenReaderOn]);
+
+  // Touch-and-hold reads a control aloud (§13.2). Only with our own voice: a screen reader already does this itself.
+  useEffect(() => {
+    const el = practiceRef.current;
+    if (!el) return;
+    return attachReadAloud(el, {
+      enabled: () => {
+        const st = useEcho.getState();
+        return !st.screenReaderOn && st.settings.narration === 'voice';
+      },
+      speak: (text) => {
+        cancelSpeech();
+        void speak(text);
+      },
+      onRead: () => void vibrate([GESTURE.tickMs]),
+    });
+  }, []);
 
   // Volume keys (§13.3), native only: keys act as Click and Replay unless a screen reader needs them for its own volume.
   useEffect(() => {

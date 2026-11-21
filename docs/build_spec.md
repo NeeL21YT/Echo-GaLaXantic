@@ -555,3 +555,6 @@ Echo must teach the technique, not only test it. Level select shows **Learn** (s
 - Lessons: 1 Make your click · 2 Which side is the wall (→ L1) · 3 Near and far (→ L2) · 4 Doorways are silence (→ L3) · 5 Poles and moving (→ L4) · 6 Practise in a real room.
 - **Click coach (Lesson 1):** the learner makes a palatal tongue click; the mic hears it and Echo judges each click on loudness, length and brightness (`engine/clickQuality.ts`). Verdicts: good (a tone, no speech), quiet, loud, long, dull, each with one concrete fix. Five good clicks end the exercise. No mic: the lesson says so and lets the learner practise unmonitored. Thresholds are first guesses (`CLICK_COACH`) to be tuned on a real phone.
 - Lesson 6 is the bridge to real rooms: arm's length from a wall, step back, doorway listening, and always with a cane or a friend. Echo is stated to be practice, never a navigation aid.
+
+### 13.8 Touch-and-hold to hear (`input/readAloud.ts`)
+With our own voice on and no screen reader, holding a finger on a button, card, chip, heading or the message for 0.5 s reads it aloud and does **not** press it; a quick tap still presses. This lets a blind user feel their way round the screen. With TalkBack on it stands down, because the phone already reads what is touched. Gestures ignore touches that begin on these elements, so a read never also fires an action.
