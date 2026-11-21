@@ -102,3 +102,29 @@ export const NARRATION = {
 
 // Feedback (§7.3).
 export const CONTRAST_PAUSE_MS = 400;
+
+// Level definitions (§7.2). Pass thresholds are "exactly as submitted" — change only with a Decisions log line.
+export const LEVEL = {
+  l1: { wallDistM: 1.5, trials: 10, passCorrect: 8 },
+  l2: { nearM: 1.0, farM: 3.0, trials: 10, passCorrect: 8 },
+  l3: {
+    roomM: 6,
+    gapWidthM: 1.0,
+    cornerMarginM: 0.75, // from the gap EDGE to the corner
+    headingStepDeg: 15,
+    toleranceDeg: 20,
+    trials: 5,
+    passCorrect: 4,
+  },
+  l4: {
+    widthM: 2,
+    lengthM: 10,
+    poleXM: [-0.5, 0.5] as const,
+    poleYM: [3, 7] as const,
+    trials: 3,
+    passRuns: 2,
+  },
+  l5: { timeLimitS: 90, trials: 1 },
+  // Corridor and L-corridor start this far in from the closed back wall.
+  startInsetM: 0.5,
+};
