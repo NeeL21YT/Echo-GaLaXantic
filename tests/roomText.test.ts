@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { RANGING } from '../src/config';
 import {
-  facingWords, guessPrompt, judgeGuess, nearestDirectionNote, spokenTurn,
+  facingWords, guessPrompt, HEADING_FIRST_PING, judgeGuess, nearestDirectionNote, ROOM_FILTERED, ROOM_ROUGH, roomIntro,
+  spokenTurn,
 } from '../src/speech/roomText';
 
 describe('judgeGuess', () => {
@@ -60,6 +61,22 @@ describe('facingWords', () => {
     expect(facingWords(0)).toBe('the way you first faced');
     expect(facingWords(92)).toBe('about ninety degrees to your right of the way you first faced');
     expect(facingWords(-180)).toBe('the opposite of the way you first faced');
+  });
+});
+
+describe('room claims', () => {
+  it('asks for the flat hold that gives a heading, and names the limit of the practice', () => {
+    const intro = roomIntro('keys').join(' ');
+    expect(intro).toContain('flat at chest height');
+    expect(intro).toContain('top edge pointing at the wall');
+    expect(intro).toContain('not a navigation aid');
+    expect(HEADING_FIRST_PING).toContain('not the way the echo came');
+  });
+
+  it('calls a disagreeing measurement rough instead of confident', () => {
+    expect(ROOM_ROUGH).toContain('disagreed');
+    expect(ROOM_ROUGH).toContain('rough');
+    expect(ROOM_FILTERED).toContain('may be wrong');
   });
 });
 

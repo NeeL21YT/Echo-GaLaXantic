@@ -26,6 +26,7 @@ vi.mock('../src/native/echoNative', () => ({
 }));
 vi.mock('../src/audio/ranger', () => ({
   openRanger: h.openRanger, closeRanger: h.closeRanger, measureNearestSurface: h.measure,
+  audioFiltered: () => false, takeWasRough: () => false,
 }));
 vi.mock('../src/audio/clickCoach', () => ({ startClickCoach: h.startCoach, stopClickCoach: h.stopCoach }));
 vi.mock('../src/audio/player', () => ({ play: vi.fn(async () => undefined), stopAll: vi.fn(), isPlaying: () => false, setVolume: vi.fn() }));

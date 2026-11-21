@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RANGING, SPEED_OF_SOUND } from '../src/config';
-import { combinePings, estimateNearestSurface, makeChirp } from '../src/engine/ranging';
+import { combinePings, estimateNearestSurface, makeChirp, pingsDisagree, pingSpreadM } from '../src/engine/ranging';
 
 const SR = 48000;
 const chirp = makeChirp(SR);
@@ -75,5 +75,24 @@ describe('combinePings', () => {
 
   it('gives up when most pings found nothing', () => {
     expect(combinePings([{ distanceM: 1, strength: 0.2 }, null, null, null, null])).toBeNull();
+  });
+});
+
+describe('disagreement', () => {
+  const at = (distanceM: number) => ({ distanceM, strength: 0.2 });
+
+  it('measures the spread of the distances that found a wall', () => {
+    expect(pingSpreadM([at(1.5), null, at(1.6), at(2.1)])).toBeCloseTo(0.6, 5);
+    expect(pingSpreadM([null, at(1.5), null])).toBeNull();
+    expect(pingSpreadM([])).toBeNull();
+  });
+
+  it('calls close pings in agreement and far-apart pings a disagreement', () => {
+    expect(pingsDisagree([at(1.5), at(1.6), at(1.7), at(1.55), null])).toBe(false);
+    expect(pingsDisagree([at(1.2), at(2.4), at(1.5)])).toBe(true);
+  });
+
+  it('does not call a single ping a disagreement', () => {
+    expect(pingsDisagree([at(1.5), null, null])).toBe(false);
   });
 });

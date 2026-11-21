@@ -1,15 +1,15 @@
 // Real-room check flow (§13.6): ping → guess first → reveal → fade. Teaches the ear; the phone only checks the answer.
 // The microphone is open for the whole visit and must be released on every way out, including a Back pressed mid-ping.
 import { RANGING, ROOM_FAILS_BEFORE_TIP } from '../config';
-import { closeRanger, measureNearestSurface, openRanger } from '../audio/ranger';
+import { audioFiltered, closeRanger, measureNearestSurface, openRanger, takeWasRough } from '../audio/ranger';
 import { stopAll } from '../audio/player';
 import type { Range } from '../engine/ranging';
 import { signedTurn, type DirectedRange } from '../engine/roomDirection';
 import { currentHeading, startCompass, stopCompass } from '../input/compass';
 import { currentInputStyle } from '../input/inputStyle';
 import {
-  guessHelp, guessPrompt, HEADING_FIRST_PING, judgeGuess, nearestDirectionNote, noWall, revealHint, ROOM_LISTENING,
-  ROOM_MIC_BLOCKED, roomIntro, spokenTurn, tryAgainPrompt,
+  guessHelp, guessPrompt, HEADING_FIRST_PING, judgeGuess, nearestDirectionNote, noWall, revealHint, ROOM_FILTERED,
+  ROOM_LISTENING, ROOM_MIC_BLOCKED, ROOM_ROUGH, roomIntro, spokenTurn, tryAgainPrompt,
   type GuessJudgement,
 } from '../speech/roomText';
 import { cancel } from '../speech/narrator';
@@ -33,6 +33,10 @@ let readings: DirectedRange[] = [];
 let firstHeading: number | null = null;
 let lastHeading: number | null = null;
 let headingExplained = false;
+/** True when the last measurement's pings disagreed, so the reveal says the distance is rough. */
+let rangeRough = false;
+/** The phone-filtering warning is said once per visit, not on every ping. */
+let filteredWarned = false;
 /** Bumped on every visit and every exit, so a ping still running from an earlier visit speaks and changes nothing. */
 let visit = 0;
 /** Bumped whenever the room speaks something new, so an introduction still being read stops at once. */
@@ -70,6 +74,8 @@ export function startRoom(): void {
   firstHeading = null;
   lastHeading = null;
   headingExplained = false;
+  rangeRough = false;
+  filteredWarned = false;
   startCompass();
   stopAll();
   S().patch({ phase: 'realRoom', levelId: null, lessonId: null, trial: null, lastHits: [], lastPose: null });
@@ -114,6 +120,7 @@ async function ping(): Promise<void> {
     }
     failsInRow = 0;
     range = found;
+    rangeRough = takeWasRough();
     guess = RANGING.guessStartM;
     // The heading is read before the reveal is spoken, while the learner still stands the way they pinged.
     const heading = currentHeading();
@@ -125,6 +132,10 @@ async function ping(): Promise<void> {
     }
     const style = currentInputStyle();
     const said = ['Got it.'];
+    if (!filteredWarned && audioFiltered()) {
+      filteredWarned = true;
+      said.push(ROOM_FILTERED);
+    }
     if (heading !== null && !headingExplained) {
       headingExplained = true;
       said.push(HEADING_FIRST_PING);
@@ -157,7 +168,7 @@ function lockIn(): void {
   closeStreak = lastJudgement.close ? closeStreak + 1 : 0;
   sub = 'revealed';
   changed();
-  void tell(`${lastJudgement.now} ${revealHint(style)}`);
+  void tell(`${lastJudgement.now}${rangeRough ? ` ${ROOM_ROUGH}` : ''} ${revealHint(style)}`);
 }
 
 /** Releases everything the check holds: the microphone, the chirp, speech, and any ping still in flight. */
@@ -169,6 +180,8 @@ export function abortRoom(): void {
   firstHeading = null;
   lastHeading = null;
   headingExplained = false;
+  rangeRough = false;
+  filteredWarned = false;
   closeRanger();
   stopAll();
   cancel();
@@ -205,11 +218,15 @@ export function roomAction(action: Action): boolean {
     case 'replay': {
       if (sub !== 'revealed' || !lastJudgement) return false;
       const direction = nearestDirectionNote(readings, firstHeading);
-      void tell(direction ? `${lastJudgement.reveal} ${direction}` : lastJudgement.reveal);
+      const parts = [lastJudgement.reveal];
+      if (rangeRough) parts.push(ROOM_ROUGH);
+      if (direction) parts.push(direction);
+      void tell(parts.join(' '));
       return true;
     }
     case 'next':
       if (sub !== 'revealed') return false;
+      rangeRough = false;
       sub = 'idle';
       changed();
       void tell(tryAgainPrompt(currentInputStyle()));

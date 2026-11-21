@@ -2,7 +2,7 @@
 
 Branch: `mobile`. Last updated: 22 November 2026.
 Test phone: Redmi Note 10 (M2101K7BI), Android 13. App: debug APK built from this branch.
-Checks: `npm run build` has 0 TypeScript errors. `npm test` passes 382 tests in 27 files.
+Checks: `npm run build` has 0 TypeScript errors. `npm test` passes 401 tests in 28 files.
 
 This file has seven parts:
 1. What was fixed.
@@ -97,6 +97,17 @@ Design changes are also logged, one line each, in the Decisions log in `CLAUDE.m
   - The reveal now says how far off the guess was.
 - **Practice, not a navigation aid:** Lesson 6 and the real-room check now say plainly that Echo is practice, not a navigation aid.
 
+### Real-room direction and robustness (22 November 2026)
+Files: `src/engine/roomDirection.ts` (new), `src/input/compass.ts` (new), `src/engine/ranging.ts`, `src/audio/ranger.ts`, `src/speech/roomText.ts`, `src/state/roomRunner.ts`, `src/config.ts` (`HEADING`, two `RANGING` values), `tests/roomDirection.test.ts` (new), `tests/ranging.test.ts`, `tests/roomText.test.ts`.
+- **Direction:** the check records the way the phone was pointing at each measured ping and compares headings.
+  - Turning between pings is spoken, and Replay can name the nearest reading by the facing it was taken with.
+  - It needs the phone fairly flat, because the heading comes from the top edge; the introduction now asks for that hold.
+  - A phone with no heading sensor, or a stale reading, hears nothing about direction — the behaviour before this pass.
+  - Every line says the way the phone was held, never the way the echo came. One mono microphone cannot know that.
+- **Bad takes are thrown away:** a recording that lost audio to the browser is discarded, because a dropped buffer shortens every distance in the take.
+- **Disagreement is said out loud:** if the five pings span more than 80 cm, the reveal calls the distance rough instead of certain.
+- **A filtered microphone is named:** if the phone insists on echo cancellation, noise suppression or AGC, Echo says once per visit that its distances may be wrong.
+
 ### Saved data and Settings (`src/state/progress.ts`, `src/ui/Settings.tsx`)
 - **Bad saved data:** corrupt or old saved data could crash or silence the app. Every stored value is now checked.
 - **Storage limits:**
@@ -128,7 +139,7 @@ Files: `src/ui/styles.css` (about 475 lines reworked) and `src/ui/Controls.tsx`.
   - 43 screens at every size: all setup steps, the level list, every phase of Levels 1 to 5, the summary, lesson pages, the real-room check, Settings and the observer view.
   - Checks: no sideways scrolling, nothing past the screen edge, no button under 56 px, nothing clipped or overlapping, nothing under the safe area, and controls in view.
   - Sizes: 320×568, 360×640, 375×667 and 392×873, each at text size 100%, 130% and 200% (Android's large-font setting), and 412×915 at 100%.
-- **Build:** `npm run build` and all 382 tests pass with these changes.
+- **Build:** `npm run build` and the whole test suite passed with these changes (382 tests at the time).
 
 ### On-phone test results (three rounds)
 - **Passed:**
@@ -161,7 +172,12 @@ The test phone blocks automated key presses, and the tests cannot hear sound. A 
    - The volume keys change the volume again.
    - Every button can be read and pressed.
 5. **Sound, with headphones:** click and echoes, left and right, near and far, the jingles, the turn tick, Morse beeps and vibration patterns.
-6. **Real room, in a quiet room facing a wall:** ping, guess with Far and Near, Lock in my guess, Tell me the distance, Next.
+6. **Real room, in a quiet room facing a wall:**
+   - Hold the phone flat, top edge pointing at the wall, and ping. You should hear the flat-hold line once, and no warning that the phone is filtering its microphone.
+   - Ping again without turning: "You are facing the same way as your last measurement."
+   - Turn about ninety degrees between pings: the turn is spoken, and Replay may name a nearer reading from the other facing.
+   - Guess with Far and Near, Lock in my guess, Tell me the distance, Next.
+   - In a cluttered or soft room the distance should be called rough, not certain.
 7. **Level 5:** walk to the exit, then the summary.
 8. **Speed-up offer:** pass a level three times at eight out of ten or better, then choose Yes or the level list.
 9. **"Previously…" on the summary:** play the same level a second time.
@@ -184,7 +200,16 @@ None of these stop the app being used. They are listed so nothing is hidden.
 - **Lesson demo position:** the Lesson 5 demo stands at the corridor's back wall, not at Level 4's start position.
 - **Deprecated mic API:** the mic code uses `ScriptProcessorNode`. It still works, but browsers mark it as deprecated.
 - **Numbers in the code:** some numbers are still written in audio, speech and world code instead of `config.ts`, for example Morse gap lengths and world sizes.
-- **Out-of-date spec:** `build_spec.md` still says `RENDER_VERSION` 1, `fftSize` 512, and "2 of 12" for menu scanning. Many newer `config.ts` groups are not listed there.
+- **Out-of-date spec:** `build_spec.md` §13.6 now matches the code, but many newer `config.ts` groups (`HEADING`, `RANGING`, `GESTURE`, `VOLUME_KEY`, `MORSE`, `HAPTIC`, `STORAGE_LIMITS`, `SCREEN_READER_WAIT`, `CLICK_COACH`) are still absent from the spec's config appendix.
+- **Real room, no echo direction:** a phone has one mono microphone, so Echo cannot hear which way an echo came from at any price. The direction pass reports only the way the phone was held.
+- **Real room, nearest surface:** the number is to whatever reflects first — a table, chair, curtain or person — not necessarily the wall the learner meant.
+- **Real room, phone filters:** if Android ignores the request to switch off echo cancellation, AGC or noise suppression, the direct path and near echoes can be removed and the numbers are wrong. Echo now warns, but cannot prevent it.
+- **Real room, flat hold:** the heading needs the phone fairly flat, so an upright hold gives no direction at all, silently.
+- **Real room, magnetometer:** a jump in the absolute heading (a metal doorway, a laptop, a magnet) can invent a turn of ninety degrees.
+- **Real room, iPhone:** `DeviceOrientationEvent.requestPermission()` is never requested, so heading is Android-only today.
+- **Real room, dropped audio:** the fill check catches gross loss, but a gap in the middle of one otherwise complete take can still slip through. Moving the capture to an `AudioWorklet` would fix it properly.
+- **Real room, no memory:** every visit starts from nothing; there are no saved spots.
+- **Real room, grading:** a guess is still judged even when the reading was just called rough.
 - **Spec deviations:** several are intentional and recorded in the `CLAUDE.md` Decisions log:
   - Gestures act on the message area.
   - Long lesson text is shown smaller than 48 px.
@@ -210,7 +235,12 @@ None of these stop the app being used. They are listed so nothing is hidden.
    - The observer map is placed sensibly.
    - Swipes still answer in Levels 1 and 2.
 3. **Do the person checks in section 2:** hardware Back, volume keys, multi-finger taps, TalkBack, sound, real room, Level 5, the speed-up offer and "Previously…".
-4. **Decide whether to update `build_spec.md`** so it matches the code: `RENDER_VERSION`, `fftSize`, the newer `config.ts` groups, and the §13.8 deviation.
+4. **Run the real-room check on the phone before changing any of it.** In a quiet room with one hard flat wall, do the five checks in section 2 item 6. Interpret what you hear:
+   - No direction lines at all: the phone has no absolute heading event, or it is being held upright. The check is still working as it did before the pass.
+   - "I could not find a wall" every time: suspect the room's softness first, then the "filtering its microphone" warning, then the sensor.
+   - Distances too short by a consistent amount: expected bias from the speaker-to-microphone path; measure once against a tape measure before changing `RANGING`.
+   - Erratic distances within one visit: that is what an `AudioWorklet` capture would fix; do not paper over it with thresholds.
+5. **Finish the doc drift in `build_spec.md`:** list the newer `config.ts` groups in its config appendix, and check the §13.8 deviation note.
 
 ---
 
@@ -269,7 +299,9 @@ This is the set-up used on the team's Windows PC.
   These are the checks listed in section 2.
 - **adb-mcp plugin:** it was installed, but its server failed to connect ("Connection closed"), so plain `adb` was used instead.
 - **Responsive layout:** measured in a headless Chromium browser (Brave) against `vite preview`, using the DevTools device-size emulation at each screen size. The measuring script was a throwaway local file and is not in the repo.
-- **Automated tests:** they grew from 283 to 382, in 27 files. The new tests include:
+- **Automated tests:** they grew from 283 to 401, in 28 files. The new tests include:
+  - Real-room ranging, disagreement and direction maths (`tests/ranging.test.ts`, `tests/roomDirection.test.ts`).
+  - Real-room wording (`tests/roomText.test.ts`).
   - Full flow runs of Levels 1 to 5 (`tests/journey-levels.test.ts`).
   - Setup, lessons and the real room (`tests/journey-setup*.test.ts`, `tests/coachMicOff.test.ts`).
   - Saved data (`tests/progress.test.ts`).
@@ -291,3 +323,5 @@ This is the set-up used on the team's Windows PC.
 | `ffeab9f` seg27 | Docs: this status file and the Decisions log |
 | `f3ae219` seg28 | Responsive layout for phone sizes and large text (landscape, tablet and desktop still to measure) |
 | `f31f861` seg29 | Docs: responsive status, remaining unfixed items, next-session plan |
+
+Uncommitted at the time of writing: the real-room direction and robustness pass described in section 1, plus the README and spec updates that go with it.

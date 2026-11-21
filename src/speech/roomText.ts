@@ -60,7 +60,7 @@ const PING_WORDS: Record<InputStyle, string> = {
 export function roomIntro(style: InputStyle): string[] {
   return [
     'Real room check. Unplug your headphones, so the phone speaker is used.',
-    `Face a wall one to five metres away. Hold the phone at chest height. ${PING_WORDS[style]}`,
+    `Face a wall one to five metres away. Hold the phone flat at chest height, top edge pointing at the wall. ${PING_WORDS[style]}`,
     'Then guess how far the wall is before I tell you. Echo is practice, not a navigation aid. Keep using your cane or a friend.',
   ];
 }
@@ -104,9 +104,10 @@ function turnWords(magnitudeDeg: number): string {
   return DEGREE_WORDS[rounded] ?? `about ${rounded} degrees`;
 }
 
-/** Said once, on the first ping that had a heading, so the direction pass is never a silent surprise. */
+/** Said once, on the first ping that had a heading, so the direction pass is never a silent surprise, and so the
+ *  learner knows the hold it needs: the heading comes from the phone's top edge, which needs the phone fairly flat. */
 export const HEADING_FIRST_PING =
-  'I can tell which way the phone is facing. Turn between pings and I will compare directions. I know the way the phone faces, not the way the echo came.';
+  'Your phone is flat, so I can tell which way it faces. Turn between pings and I will compare directions. I know the way the phone faces, not the way the echo came.';
 
 /** The net turn since the last measurement, in words. A failed ping has no direction, so this compares with the
  *  last ping that actually measured something. */
@@ -136,6 +137,13 @@ export function nearestDirectionNote(readings: readonly DirectedRange[], firstHe
 }
 
 export const ROOM_LISTENING = 'Listening. Stay still and quiet.';
+
+/** Said with the reveal when the pings did not agree, so a middle-of-the-road number is never presented as a
+ *  measurement. Nothing about the guess is judged differently: only the claim about the room is softened. */
+export const ROOM_ROUGH = 'My pings disagreed in this room, so that distance is rough.';
+
+/** Said once per visit when the phone reports that it is filtering the microphone anyway. */
+export const ROOM_FILTERED = 'Your phone is filtering its microphone, so these distances may be wrong.';
 
 export function noWall(failsInRow: number, tipAfter: number): string {
   const base = 'I could not find a wall. Face a wall within five metres, keep the phone steady, and ping again.';

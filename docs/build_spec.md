@@ -175,7 +175,7 @@ export const MIC = {
   refractoryMs: 300,
 };
 
-export const RENDER_VERSION = 1;            // bump when the echo model changes; logged per trial
+export const RENDER_VERSION = 3;            // bump when the echo model changes; logged per trial
 ```
 
 ---
@@ -261,7 +261,7 @@ All SFX are procedural, with no audio files:
 
 ### 6.6 Mic detector (`micDetector.ts`)
 - `getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } })`. After connecting, read `track.getSettings()` and show which constraints were honoured (in Settings, text only).
-- Graph: `MediaStreamSource → BiquadFilter(highpass 1500 Hz) → AnalyserNode(fftSize 512)`.
+- Graph: `MediaStreamSource → BiquadFilter(highpass 1500 Hz) → AnalyserNode(fftSize 1024)`. 1024 rather than 512 because at 48 kHz 512 is 10.7 ms, shorter than a frame; see `MIC.fftSize` in `config.ts`.
 - Poll in `requestAnimationFrame`: `peak = max|x|`. Noise floor is an EMA updated only when not triggered. Trigger when `peak > max(MIC.minPeak, floor·MIC.floorMultiplier)` **and** the refractory period of 300 ms has passed.
 - On trigger, call `onClick()`, which renders and plays with `includeDirect: false`.
 - Ignore triggers while a stimulus or speech is playing, because headphone bleed could re-trigger.
@@ -547,10 +547,16 @@ Settings `Morse`: off · vibration · sound. It is added to the narration, never
 ### 13.5 Screen reader (`native/screenReader.ts`)
 Native: TalkBack touch-exploration state is read on launch, on resume and on change. On → narration `screenreader`, our speech is cancelled and not used; the user's choice is kept and restored when it goes off. Web: the onboarding question stays.
 
-### 13.6 Real-room ranging (`engine/ranging.ts`, `audio/ranger.ts`)
-Replaces camera depth (a camera sees nothing in the dark and depth needs ARCore/ML). The phone plays a 4 ms linear chirp and records with echo-cancel, noise-suppress and AGC off. A matched filter finds the direct path and the first echo; distance = 343 × Δt / 2. Five pings, median. Works in total darkness. Estimate range 0.3–5 m, accuracy about ±0.15 m on a quiet room; this is a practice aid, not a navigation aid.
+### 13.6 Real-room ranging and direction (`engine/ranging.ts`, `audio/ranger.ts`, `engine/roomDirection.ts`, `input/compass.ts`, `speech/roomText.ts`)
+Replaces camera depth (a camera sees nothing in the dark and depth needs ARCore/ML). The phone plays a 4 ms linear chirp (2–9 kHz) and records with echo cancellation, noise suppression and AGC requested off. A matched filter finds the direct speaker-to-microphone path, which anchors time zero, and the first later peak that clears both the noise floor and the chirp's sidelobe floor; distance = 343 × Δt / 2. Five pings, median. Works in total darkness. Estimate range 0.3–5 m; this is a practice aid, not a navigation aid.
 - Flow: the user pings, **guesses first** (Far/Near = ±0.5 m, Answer to confirm), then Echo reveals the measured distance and the difference.
 - Fade: after three guesses in a row within 0.5 m, Echo says only "Close" or "Off" unless Replay is pressed.
+- **Direction pass (22 November 2026):** at each measured ping the phone's heading is read from `deviceorientationabsolute` (or `deviceorientation` where that is all that exists — never both, their zero points differ) and stored with the distance. Turns between measurements are spoken, and Replay names the nearest reading by the facing it was taken with. The heading comes from the phone's **top edge**, so it needs the phone fairly flat (`HEADING.minHorizontal`), and a sample older than `HEADING.staleMs` is refused rather than guessed. A phone with no sensor, or a stale sample, hears nothing about direction — exactly the behaviour before the pass. **One mono microphone cannot say which way an echo came from, so no spoken line ever does; every direction line describes the way the phone was held.**
+- **Guards, so a bad room is called bad instead of guessed at:**
+  - A take holding less than 90% of the planned samples is discarded (`RANGING.minFilledFraction`). The browser delivers recording buffers on the main thread, and a dropped buffer silently shortens every distance in the take.
+  - If the pings' distances span more than 80 cm (`RANGING.agreeSpreadM`), the reveal says the distance is rough (`pingsDisagree` in `engine/ranging.ts`) instead of presenting the median as a measurement.
+  - If the phone still reports echo cancellation, noise suppression or AGC (`audioFiltered()`), Echo says once per visit that its distances may be wrong. Web Audio can only request those off.
+- **Accuracy is unverified on a device.** Synthetic tests place a wall within 5 cm. On a phone the reading is expected to be a few centimetres **short**, because time zero is the speaker-to-microphone path rather than the speaker, and soft, oblique or cluttered surfaces can return an echo too weak to pass the floor — that is the "I could not find a wall" case. Never describe these numbers as clinically accurate or as a tape measure.
 
 ### 13.7 Teaching track (`levels/lessons.ts`, `state/lessonRunner.ts`, `audio/clickCoach.ts`)
 Echo must teach the technique, not only test it. Level select shows **Learn** (six lessons) above **Practise** (the five levels).

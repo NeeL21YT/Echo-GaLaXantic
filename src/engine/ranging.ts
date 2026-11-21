@@ -103,3 +103,23 @@ export function combinePings(ranges: readonly (Range | null)[]): Range | null {
     strength: median(found.map((r) => r.strength)),
   };
 }
+
+/** How far apart the pings' distances are, or null when fewer than two found a wall. */
+export function pingSpreadM(ranges: readonly (Range | null)[]): number | null {
+  const found = ranges.filter((r): r is Range => r !== null);
+  if (found.length < 2) return null;
+  let near = Infinity;
+  let far = -Infinity;
+  for (const r of found) {
+    near = Math.min(near, r.distanceM);
+    far = Math.max(far, r.distanceM);
+  }
+  return far - near;
+}
+
+/** True when the pings of one take disagree too much for their middle to be called a measurement. A room that is
+ *  cluttered, soft or echoey gives this, and the learner is told rather than handed a confident number. */
+export function pingsDisagree(ranges: readonly (Range | null)[]): boolean {
+  const spread = pingSpreadM(ranges);
+  return spread !== null && spread > RANGING.agreeSpreadM;
+}

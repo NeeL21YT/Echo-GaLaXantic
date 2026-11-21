@@ -229,6 +229,11 @@ export const RANGING = {
   /** An echo must reach at least this fraction of the direct-path peak. */
   // Above the chirp's own correlation sidelobes (Hann-windowed, about -30 dB = 0.03).
   minRelativeStrength: 0.05,
+  /** A take holding less than this share of the planned recording lost audio to the browser, which would silently
+   *  shorten every distance in it; such a take is thrown away instead of measured. */
+  minFilledFraction: 0.9,
+  /** Pings that found walls this far apart are treated as disagreeing, so their median is called rough out loud. */
+  agreeSpreadM: 0.8,
   /** Guess steps and tolerance for "close" (§13.6). */
   guessStepM: 0.5,
   guessStartM: 1,
