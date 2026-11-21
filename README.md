@@ -87,7 +87,7 @@ The practice area has focus while you use these keys. Every action is also a but
 - `public/sw.js`: service worker for offline reloads of app files.
 - `src/config.ts`: every tunable number, with a comment for each.
 
-Docs: `docs/build_spec.md` (architecture, formulas, levels, UI, tests), `docs/idea_and_strategy.md` (problem, pitch, honest limits), `docs/claude_code_prompts.md` (build prompts), and `CLAUDE.md` (rules for the build).
+Docs: `docs/build_spec.md` (architecture, formulas, levels, UI, tests), `docs/idea_and_strategy.md` (problem, pitch, honest limits), `docs/mobile_status.md` (Android fixes, checks still to do, known issues), `docs/claude_code_prompts.md` (build prompts), and `CLAUDE.md` (rules for the build).
 
 ## Honest limits
 

@@ -576,3 +576,5 @@ Note: on Android a long press can make the browser cancel the pointer. A cancel 
 One meaning of Back everywhere: the on-screen **Back** button (top left on every screen except the level list), the phone's back button and the back swipe. Back closes Settings if open; otherwise goes from any lesson, level or real-room check to the level list; on the level list (or first-run setup) it says "Press back again to close Echo" and closes only on a second press within 2.5 s. Android's back is handed to JS by `EchoNativePlugin` (`backPressed`), so it can never silently close the app. Verified on a phone: Back from a lesson returns to the level list.
 
 Not yet verified on a phone: the double-press exit at the top, the new text sizes on the real screen, and the two-column button grid.
+
+Current fix and test status, what still needs a phone check, and known open issues: `docs/mobile_status.md`.
