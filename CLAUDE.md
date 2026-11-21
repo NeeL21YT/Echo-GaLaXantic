@@ -97,3 +97,8 @@ Append one line per change: `YYYY-MM-DD HH:MM — what changed — why — RENDE
 - 2026-11-21 20:30 — Keys: a focused `<button>` keeps its native Space/Enter and the container ignores it; `N` = next added to the map — avoids double actions — RENDER_VERSION 1
 - 2026-11-21 20:30 — Trial log adds `runId`; each entry is finalised when its feedback ends so replay/contrast counts are complete — §8.3 couldn't separate runs — RENDER_VERSION 1
 - 2026-11-21 20:30 — Click constants (`CLICK`), `HIT_EPSILON_M` and `CLIP_WARN_PEAK` added to config.ts — no magic numbers outside config — RENDER_VERSION 1
+- 2026-11-21 21:40 — Echo builder: hits carry `kind`; pole and wall echoes use separate merge bins and pole voices are reserved before the strongest walls fill the 24-voice cap — in the L4 corridor the pole echo (gain 0.130) ranked 25th and was silently dropped; the cap is a render budget, not acoustics. Formulas unchanged — RENDER_VERSION 2
+- 2026-11-21 21:40 — Mic: analyser `fftSize` 1024 instead of 512 — 512 samples (10.7 ms) is shorter than one animation frame, so a 3 ms click could fall between polls — RENDER_VERSION 2
+- 2026-11-21 21:40 — Onboarding asks "Do you use a screen reader?" right after Start, before the headphone check — otherwise speechSynthesis talks over NVDA for the whole check — RENDER_VERSION 2
+- 2026-11-21 21:40 — Progress: run summaries stored in `echo.runs.v1` next to the trial log; every session starts on the Space key (the mic needs a fresh permission grant) — score history and pass streaks without rebuilding runs from trials — RENDER_VERSION 2
+- 2026-11-21 21:40 — Screen-reader mode contrast: each label is announced, then a fixed 1.5 s gap before its sound — `speechSynthesis` can't observe when NVDA finishes — RENDER_VERSION 2

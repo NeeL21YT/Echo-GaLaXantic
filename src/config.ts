@@ -42,7 +42,7 @@ export const MIC = {
   fftSize: 1024,
 };
 
-export const RENDER_VERSION = 1;            // bump when the echo model changes; logged per trial
+export const RENDER_VERSION = 2;            // bump when the echo model changes; logged per trial
 
 // --- Additions beyond spec §4 (see CLAUDE.md Decisions log) ---
 
@@ -128,3 +128,13 @@ export const LEVEL = {
   // Corridor and L-corridor start this far in from the closed back wall.
   startInsetM: 0.5,
 };
+
+// Fixed Mulberry32 mixing parameters keep trial seeds reproducible across callers.
+export const MULBERRY32 = {
+  increment: 0x6d2b79f5,
+  firstShift: 15,
+  secondShift: 7,
+  finalShift: 14,
+  mixMask: 61,
+  uint32Range: 0x1_0000_0000,
+} as const;

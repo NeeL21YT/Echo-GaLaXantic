@@ -1,13 +1,27 @@
+import { PLAYER_RADIUS_M } from '../config';
 import type { Pose, World } from '../types';
+import { dirFromHeading, distPointToSegment, distSegmentToSegment, wrapDeg } from './geometry';
 
-export function move(_pose: Pose, _step: number, _world: World): { pose: Pose; collided: boolean } {
-  throw new Error('not implemented: move');
+export function move(pose: Pose, step: number, world: World): { pose: Pose; collided: boolean } {
+  const dir = dirFromHeading(pose.headingDeg);
+  const candidate = { x: pose.p.x + step * dir.x, y: pose.p.y + step * dir.y };
+  for (const segment of world.segments) {
+    if (distSegmentToSegment(pose.p, candidate, segment.a, segment.b) < PLAYER_RADIUS_M) {
+      return { pose, collided: true };
+    }
+  }
+  for (const pole of world.poles) {
+    if (distPointToSegment(pole.c, pose.p, candidate) < PLAYER_RADIUS_M + pole.r) {
+      return { pose, collided: true };
+    }
+  }
+  return { pose: { p: candidate, headingDeg: pose.headingDeg }, collided: false };
 }
 
-export function turn(_pose: Pose, _deltaDeg: number): Pose {
-  throw new Error('not implemented: turn');
+export function turn(pose: Pose, deltaDeg: number): Pose {
+  return { p: pose.p, headingDeg: wrapDeg(pose.headingDeg + deltaDeg) };
 }
 
-export function reachedExit(_pose: Pose, _world: World): boolean {
-  throw new Error('not implemented: reachedExit');
+export function reachedExit(pose: Pose, world: World): boolean {
+  return world.exit !== undefined && distPointToSegment(pose.p, world.exit.a, world.exit.b) <= PLAYER_RADIUS_M;
 }
