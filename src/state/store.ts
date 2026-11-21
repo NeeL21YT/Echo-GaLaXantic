@@ -5,7 +5,7 @@ import { isOnboarded, loadSettings } from './progress';
 import type { AnswerResult, LevelDef, Trial } from '../levels/types';
 import type { EchoVoice, Hit, Pose } from '../types';
 
-export type Phase = 'onboarding' | 'levelSelect' | 'intro' | 'ready' | 'answered' | 'feedback' | 'summary';
+export type Phase = 'onboarding' | 'levelSelect' | 'lesson' | 'intro' | 'ready' | 'answered' | 'feedback' | 'summary';
 export type Narration = 'voice' | 'screenreader';
 export type ClickSource = 'key' | 'mic';
 export type LevelId = LevelDef['id'];
@@ -42,6 +42,9 @@ export type Action =
 export type EchoState = {
   phase: Phase;
   levelId: LevelId | null;
+  /** Teaching track (§13.7): the open lesson and which page of it. */
+  lessonId: number | null;
+  lessonPage: number;
   runId: string | null;
   trialIndex: number;
   /** Trials in the current run (from the level definition). */
@@ -89,6 +92,8 @@ export const useEcho = create<EchoState>()((set) => ({
   // Returning users skip onboarding (§9.5); audio still unlocks on their first gesture.
   phase: onboarded ? 'levelSelect' : 'onboarding',
   levelId: null,
+  lessonId: null,
+  lessonPage: 0,
   runId: null,
   trialIndex: 0,
   trialCount: 0,

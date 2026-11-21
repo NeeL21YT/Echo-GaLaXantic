@@ -5,6 +5,7 @@ import { attachKeyboard } from './input/keyboard';
 import { cancel as cancelSpeech, initNarrator } from './speech/narrator';
 import { saveSettings } from './state/progress';
 import { Announcer } from './speech/Announcer';
+import { lessonAction, lessonActions } from './state/lessonRunner';
 import { dispatch, validActions } from './state/runner';
 import { useEcho, type Action } from './state/store';
 import { BlindView } from './ui/BlindView';
@@ -26,6 +27,7 @@ function useActionLabels(): Partial<Record<Action, string>> {
   if (phase === 'intro') return { answer: 'Begin' };
   if (phase === 'ready') return { answer: 'Facing the door' };
   if (phase === 'summary') return { next: 'Level list' };
+  if (phase === 'lesson') return { next: 'Continue', replay: 'Hear again', answer: 'Practise this skill' };
   return {};
 }
 
@@ -45,6 +47,7 @@ export function App() {
   // Subscribing to these re-renders Controls when the valid actions change.
   useEcho((s) => s.lastResult);
   useEcho((s) => s.stretchOffer);
+  useEcho((s) => s.lessonPage);
   const labels = useActionLabels();
 
   const onAction = (a: Action): boolean => {
@@ -52,6 +55,7 @@ export function App() {
       setSettingsOpen((o) => !o);
       return true;
     }
+    if (phase === 'lesson') return lessonAction(a);
     return dispatch(a);
   };
   const onActionRef = useRef(onAction);
@@ -98,7 +102,8 @@ export function App() {
 
   if (isDevAudio) return <DevAudio />;
 
-  const actions = phase === 'onboarding' ? [] : [...validActions(), 'settings' as const];
+  const baseActions = phase === 'lesson' ? lessonActions() : validActions();
+  const actions = phase === 'onboarding' ? [] : [...baseActions, 'settings' as const];
   const answerActions: Action[] = ['left', 'right', 'near', 'far', 'answer'];
   const disabled = phase === 'ready' && clicks < 1 ? answerActions : [];
   const hideWorld =

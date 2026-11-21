@@ -548,3 +548,10 @@ Native: TalkBack touch-exploration state is read on launch, on resume and on cha
 Replaces camera depth (a camera sees nothing in the dark and depth needs ARCore/ML). The phone plays a 4 ms linear chirp and records with echo-cancel, noise-suppress and AGC off. A matched filter finds the direct path and the first echo; distance = 343 × Δt / 2. Five pings, median. Works in total darkness. Estimate range 0.3–5 m, accuracy about ±0.15 m on a quiet room; this is a practice aid, not a navigation aid.
 - Flow: the user pings, **guesses first** (Far/Near = ±0.5 m, Answer to confirm), then Echo reveals the measured distance and the difference.
 - Fade: after three guesses in a row within 0.5 m, Echo says only "Close" or "Off" unless Replay is pressed.
+
+### 13.7 Teaching track (`levels/lessons.ts`, `state/lessonRunner.ts`, `audio/clickCoach.ts`)
+Echo must teach the technique, not only test it. Level select shows **Learn** (six lessons) above **Practise** (the five levels).
+- A lesson is pages of short spoken text and engine-rendered A/B examples. Continue moves on, Hear again repeats the page, the last page offers "Practise this skill" which opens the matching level.
+- Lessons: 1 Make your click · 2 Which side is the wall (→ L1) · 3 Near and far (→ L2) · 4 Doorways are silence (→ L3) · 5 Poles and moving (→ L4) · 6 Practise in a real room.
+- **Click coach (Lesson 1):** the learner makes a palatal tongue click; the mic hears it and Echo judges each click on loudness, length and brightness (`engine/clickQuality.ts`). Verdicts: good (a tone, no speech), quiet, loud, long, dull, each with one concrete fix. Five good clicks end the exercise. No mic: the lesson says so and lets the learner practise unmonitored. Thresholds are first guesses (`CLICK_COACH`) to be tuned on a real phone.
+- Lesson 6 is the bridge to real rooms: arm's length from a wall, step back, doorway listening, and always with a cane or a friend. Echo is stated to be practice, never a navigation aid.

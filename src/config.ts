@@ -210,3 +210,31 @@ export const RANGING = {
   closeToleranceM: 0.5,
   passesToFade: 3,
 };
+
+// Click coach (§13.7): judges the learner's own tongue click from the mic. Thresholds are first guesses for a phone
+// mic about 10-20 cm from the mouth with AGC off; tune them against real clicks on a device.
+export const CLICK_COACH = {
+  /** Window analysed around each click: a little before the onset, then enough to see the decay. */
+  preMs: 2,
+  postMs: 60,
+  /** Onset detector works on the first difference (a cheap high-pass) so room rumble and breath don't trigger it. */
+  onsetMinDiff: 0.03,
+  onsetFloorMultiplier: 6,
+  onsetFloorAlpha: 0.02,
+  refractoryMs: 450,
+  /** Raw peak limits: below quietPeak is too soft to give a clear echo, above loudPeak is clipping. */
+  quietPeak: 0.06,
+  loudPeak: 0.95,
+  /** A sharp click's energy is gone quickly; longer than this is a cluck, a word or a hiss. */
+  maxDurationMs: 20,
+  envelopeSmoothMs: 1,
+  /** The click "ends" when the smoothed envelope falls below this fraction of its peak. */
+  decayFraction: 0.25,
+  /** Share of energy above lowpassHz. A palatal click is bright; a soft tongue pop is not. */
+  lowpassHz: 1500,
+  minBrightness: 0.4,
+  /** The coach ends after this many good clicks. */
+  goodNeeded: 5,
+  /** A good click gets a tone; after this many misses in a row the coach offers to move on. */
+  missesBeforeOffer: 6,
+};

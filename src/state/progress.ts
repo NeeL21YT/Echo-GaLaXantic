@@ -119,10 +119,22 @@ export function setOnboarded(done: boolean): void {
   write(ONBOARDED_KEY, done);
 }
 
+const LESSONS_KEY = 'echo.lessons.v1';
+
+export function getLessonsDone(): number[] {
+  return read<number[]>(LESSONS_KEY, []);
+}
+
+export function markLessonDone(id: number): void {
+  const done = getLessonsDone();
+  if (!done.includes(id)) write(LESSONS_KEY, [...done, id]);
+}
+
 export function resetProgress(): void {
   try {
     localStorage.removeItem(TRIALS_KEY);
     localStorage.removeItem(RUNS_KEY);
+    localStorage.removeItem(LESSONS_KEY);
   } catch {
     // Nothing to clear if storage is blocked.
   }

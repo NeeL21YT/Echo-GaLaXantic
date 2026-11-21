@@ -56,7 +56,7 @@ function announce(text: string, isError: boolean): void {
 }
 
 /** Speaks a short label before a sound; in screen-reader mode leaves room for the reader to finish. */
-async function sayLabel(label: string): Promise<void> {
+export async function sayLabel(label: string): Promise<void> {
   if (S().settings.narration === 'voice') {
     await speak(label);
   } else {
@@ -65,7 +65,7 @@ async function sayLabel(label: string): Promise<void> {
   }
 }
 
-async function silenceSpeech(): Promise<void> {
+export async function silenceSpeech(): Promise<void> {
   if (S().settings.narration === 'voice') {
     cancel();
     await awaitIdle();
@@ -74,7 +74,7 @@ async function silenceSpeech(): Promise<void> {
 
 // ---------- rendering ----------
 
-async function renderFrom(world: World, pose: Pose, seed: number) {
+export async function renderFrom(world: World, pose: Pose, seed: number) {
   const st = S();
   const hits = castRays(world, pose);
   const voices = buildEchoes(hits, st.settings.stretch);
