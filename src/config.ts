@@ -154,3 +154,59 @@ export const LEVEL_FEEDBACK = {
   wallAheadDeg: 45,
   numberBase: 10, // Decimal groups for spoken counts and time limits.
 } as const;
+
+// --- Mobile (build_spec §13) ---
+
+export const GESTURE = {
+  /** A second tap must land within this window to count as part of a multi-tap. */
+  tapWindowMs: 280,
+  /** Longest touch that still counts as a tap. */
+  tapMaxMs: 250,
+  /** A touch held this long without moving is a long press. */
+  longPressMs: 600,
+  /** Movement below this is finger wobble, not a swipe. Blind users touch less precisely, so keep it forgiving. */
+  swipeMinPx: 48,
+  swipeMaxMs: 800,
+  /** Max drift of a tap or long press, in px. */
+  tapSlopPx: 24,
+  /** All fingers of a multi-finger tap must land within this window. */
+  multiFingerWindowMs: 120,
+  /** Confirmation tick so the user knows a gesture registered. */
+  tickMs: 20,
+};
+
+export const MORSE = {
+  unitMs: 120,
+  toneHz: 650,
+  toneGain: 0.3,
+  /** Fixed messages, so a user can learn them: OK = pass, TRY = miss, B = bump. */
+  pass: 'OK',
+  miss: 'TRY',
+  bump: 'B',
+};
+
+// Real-room ranging (§13.6).
+export const RANGING = {
+  chirpDurationS: 0.004,
+  chirpStartHz: 2000,
+  chirpEndHz: 9000,
+  chirpGain: 0.7,
+  /** Recording length per ping. Android output latency can exceed 100 ms, so the chirp lands late in the take. */
+  recordS: 0.3,
+  pings: 5,
+  pingGapMs: 120,
+  /** Echoes closer than this to the direct path are speaker ringing, not a wall. */
+  minDistanceM: 0.3,
+  maxDistanceM: 5,
+  /** An echo must beat the median background level by this factor. */
+  peakToNoise: 6,
+  /** An echo must reach at least this fraction of the direct-path peak. */
+  // Above the chirp's own correlation sidelobes (Hann-windowed, about -30 dB = 0.03).
+  minRelativeStrength: 0.05,
+  /** Guess steps and tolerance for "close" (§13.6). */
+  guessStepM: 0.5,
+  guessStartM: 1,
+  guessMaxM: 5,
+  closeToleranceM: 0.5,
+  passesToFade: 3,
+};
