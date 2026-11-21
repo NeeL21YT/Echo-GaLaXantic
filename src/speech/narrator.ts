@@ -1,5 +1,6 @@
 // speechSynthesis wrapper for voice narration mode (§9.4). Never used in screen-reader mode.
 import { NARRATION } from '../config';
+import { isNative, nativeSpeak, nativeSpeechPending, nativeStopSpeaking } from '../native/echoNative';
 
 type Pending = { utter: SpeechSynthesisUtterance; resolve: () => void };
 
@@ -26,11 +27,13 @@ export function initNarrator(): void {
 }
 
 export function isSpeechAvailable(): boolean {
-  return synth() !== null;
+  return isNative() || synth() !== null;
 }
 
 /** Speaks text; resolves when it finishes or is cancelled. */
 export function speak(text: string): Promise<void> {
+  // The Android web view has no speechSynthesis; the phone's own engine speaks instead.
+  if (isNative()) return text ? nativeSpeak(text, NARRATION.rate) : Promise.resolve();
   const s = synth();
   if (!s || !text) return Promise.resolve();
   return new Promise<void>((resolve) => {
@@ -51,12 +54,14 @@ export function speak(text: string): Promise<void> {
 
 /** Stops all speech. Chrome doesn't always fire onend after cancel(), so pending promises are settled here. */
 export function cancel(): void {
+  if (isNative()) nativeStopSpeaking();
   synth()?.cancel();
   for (const entry of pending) entry.resolve();
   pending.clear();
 }
 
 export function isSpeaking(): boolean {
+  if (isNative()) return nativeSpeechPending();
   const s = synth();
   return pending.size > 0 || (s !== null && (s.speaking || s.pending));
 }

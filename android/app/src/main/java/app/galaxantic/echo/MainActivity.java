@@ -27,4 +27,17 @@ public class MainActivity extends BridgeActivity {
         }
         return super.onKeyDown(keyCode, event);
     }
+
+    /** The system changes the volume and shows its slider on key-up, so a captured key must be swallowed there too. */
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_UP || keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            PluginHandle handle = getBridge().getPlugin("EchoNative");
+            if (handle != null && handle.getInstance() instanceof EchoNativePlugin
+                    && ((EchoNativePlugin) handle.getInstance()).areVolumeKeysCaptured()) {
+                return true;
+            }
+        }
+        return super.onKeyUp(keyCode, event);
+    }
 }

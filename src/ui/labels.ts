@@ -1,10 +1,16 @@
 // User-facing labels shared by the views, written the way a voice would say them.
 import { getLevel, LEVELS } from '../levels';
+import { phrases } from '../input/inputStyle';
 import type { Action, LevelId } from '../state/store';
 
 export const START_PROMPT = 'Press any key or tap anywhere to start Echo.';
 
+/** What the screen shows while the longer level-list instructions are spoken. */
+export const LEVEL_LIST_HEADING = 'Choose a lesson or a level.';
+
 export function levelSelectPrompt(): string {
+  const custom = phrases().levelPrompt;
+  if (custom) return custom;
   const choices = LEVELS.map((level) => `${level.id} for ${level.title.replace(/[.?!]+$/, '')}`);
   return `Choose a level. Press ${choices.join(', ')}. Press H for help.`;
 }

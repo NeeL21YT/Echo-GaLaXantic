@@ -16,7 +16,7 @@ describe('phrases', () => {
   it('never mention keys to touch or button users', () => {
     for (const style of ['touch', 'buttons'] as const) {
       const p = PHRASES[style];
-      const all = [p.click, p.answerSide, p.answerDistance, p.turn, p.walk, p.faceDoor, p.begin, p.levelList, p.yes, p.clickFirst, p.feedbackHint(true), p.help, p.tone('left'), p.areaLabel].join(' ');
+      const all = [p.click, p.answerSide, p.answerDistance, p.turn, p.walk, p.faceDoor, p.begin, p.levelList, p.yes, p.clickFirst, p.feedbackHint(true), p.help, p.tone('left'), p.areaLabel, p.levelPrompt ?? ''].join(' ');
       expect(all).not.toMatch(/\bSpace\b|\bEnter\b|\barrow\b|\bEscape\b|\b[A-Z] (clicks|replays)\b|Press [A-Z]\b/);
     }
   });

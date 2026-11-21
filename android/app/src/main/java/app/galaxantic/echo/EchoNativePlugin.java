@@ -2,6 +2,8 @@ package app.galaxantic.echo;
 
 import android.content.Context;
 import android.os.Build;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.view.accessibility.AccessibilityManager;
@@ -11,6 +13,9 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import org.json.JSONException;
 
 /**
@@ -23,6 +28,9 @@ public class EchoNativePlugin extends Plugin {
     private AccessibilityManager.TouchExplorationStateChangeListener touchListener;
     private Vibrator vibrator;
     private boolean volumeKeysCaptured = false;
+    private TextToSpeech tts;
+    private boolean ttsReady = false;
+    private final List<Runnable> waitingForTts = new ArrayList<>();
 
     @Override
     public void load() {
@@ -37,6 +45,55 @@ public class EchoNativePlugin extends Plugin {
         if (accessibility != null) {
             accessibility.addTouchExplorationStateChangeListener(touchListener);
         }
+        startSpeech(context);
+    }
+
+    /**
+     * Android WebView has no speechSynthesis, so Echo's own voice goes through the system text-to-speech engine here.
+     */
+    private void startSpeech(Context context) {
+        tts = new TextToSpeech(context, status -> {
+            if (status != TextToSpeech.SUCCESS) {
+                return;
+            }
+            tts.setLanguage(Locale.US);
+            tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                @Override
+                public void onStart(String utteranceId) {}
+
+                @Override
+                public void onDone(String utteranceId) {
+                    speechEnded(utteranceId);
+                }
+
+                @Override
+                public void onError(String utteranceId) {
+                    speechEnded(utteranceId);
+                }
+
+                @Override
+                public void onStop(String utteranceId, boolean interrupted) {
+                    speechEnded(utteranceId);
+                }
+            });
+            synchronized (waitingForTts) {
+                ttsReady = true;
+                for (Runnable r : waitingForTts) {
+                    r.run();
+                }
+                waitingForTts.clear();
+            }
+        });
+    }
+
+    private void speechEnded(String utteranceId) {
+        try {
+            JSObject data = new JSObject();
+            data.put("id", Integer.parseInt(utteranceId));
+            notifyListeners("speechEnd", data);
+        } catch (NumberFormatException ignored) {
+            // Not one of ours.
+        }
     }
 
     @Override
@@ -45,6 +102,10 @@ public class EchoNativePlugin extends Plugin {
             accessibility.removeTouchExplorationStateChangeListener(touchListener);
         }
         cancelVibrationNow();
+        if (tts != null) {
+            tts.stop();
+            tts.shutdown();
+        }
     }
 
     /** TalkBack (and other touch-exploration screen readers) on or off. */
@@ -53,6 +114,37 @@ public class EchoNativePlugin extends Plugin {
         JSObject result = new JSObject();
         result.put("on", accessibility != null && accessibility.isTouchExplorationEnabled());
         call.resolve(result);
+    }
+
+    /** Queues text to be spoken; a "speechEnd" event with the same id follows when it finishes or is cut off. */
+    @PluginMethod
+    public void speak(PluginCall call) {
+        final String text = call.getString("text", "");
+        final int id = call.getInt("id", 0);
+        final float rate = call.getFloat("rate", 1.0f);
+        Runnable say = () -> {
+            tts.setSpeechRate(rate);
+            tts.speak(text, TextToSpeech.QUEUE_ADD, null, String.valueOf(id));
+        };
+        synchronized (waitingForTts) {
+            if (ttsReady) {
+                say.run();
+            } else {
+                waitingForTts.add(say);
+            }
+        }
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void stopSpeaking(PluginCall call) {
+        synchronized (waitingForTts) {
+            waitingForTts.clear();
+        }
+        if (tts != null && ttsReady) {
+            tts.stop();
+        }
+        call.resolve();
     }
 
     @PluginMethod
@@ -100,6 +192,10 @@ public class EchoNativePlugin extends Plugin {
         if (vibrator != null) {
             vibrator.cancel();
         }
+    }
+
+    boolean areVolumeKeysCaptured() {
+        return volumeKeysCaptured;
     }
 
     /** Called from MainActivity; true means the key was ours and the system volume must not change. */

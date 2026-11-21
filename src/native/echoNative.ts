@@ -7,7 +7,10 @@ interface EchoNativePlugin {
   setVolumeKeysCaptured(options: { captured: boolean }): Promise<void>;
   vibrate(options: { pattern: number[] }): Promise<void>;
   cancelVibration(): Promise<void>;
+  speak(options: { id: number; text: string; rate: number }): Promise<void>;
+  stopSpeaking(): Promise<void>;
   addListener(event: 'screenReaderChanged', fn: (data: { on: boolean }) => void): Promise<PluginListenerHandle>;
+  addListener(event: 'speechEnd', fn: (data: { id: number }) => void): Promise<PluginListenerHandle>;
   addListener(event: 'volumeKey', fn: (data: { key: 'up' | 'down' }) => void): Promise<PluginListenerHandle>;
 }
 
@@ -72,3 +75,42 @@ export async function cancelVibration(): Promise<void> {
     navigator.vibrate(0);
   }
 }
+
+// ---------- speech ----------
+// Android WebView has no speechSynthesis, so on the phone the system text-to-speech engine speaks through the plugin.
+
+const speechWaiting = new Map<number, () => void>();
+let speechId = 0;
+let speechListening = false;
+
+function listenForSpeechEnd(): void {
+  if (speechListening) return;
+  speechListening = true;
+  void Native.addListener('speechEnd', (d) => {
+    speechWaiting.get(d.id)?.();
+    speechWaiting.delete(d.id);
+  });
+}
+
+/** Speaks through the phone's engine; resolves when it finishes or is cut off. Resolves at once if it cannot speak. */
+export function nativeSpeak(text: string, rate: number): Promise<void> {
+  listenForSpeechEnd();
+  const id = ++speechId;
+  return new Promise<void>((resolve) => {
+    speechWaiting.set(id, resolve);
+    Native.speak({ id, text, rate }).catch(() => {
+      speechWaiting.delete(id);
+      resolve();
+    });
+  });
+}
+
+/** Stops speech and releases everything waiting on it. */
+export function nativeStopSpeaking(): void {
+  const waiting = [...speechWaiting.values()];
+  speechWaiting.clear();
+  void Native.stopSpeaking().catch(() => undefined);
+  for (const resolve of waiting) resolve();
+}
+
+export const nativeSpeechPending = (): boolean => speechWaiting.size > 0;

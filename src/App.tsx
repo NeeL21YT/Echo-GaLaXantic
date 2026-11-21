@@ -24,7 +24,7 @@ import { ObserverView } from './ui/ObserverView';
 import { Onboarding } from './ui/Onboarding';
 import { ProgressPanel } from './ui/ProgressPanel';
 import { Settings } from './ui/Settings';
-import { buttonSpeechLabel, levelSelectPrompt } from './ui/labels';
+import { buttonSpeechLabel, LEVEL_LIST_HEADING, levelSelectPrompt } from './ui/labels';
 
 const isDevAudio = import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === 'audio';
 
@@ -108,7 +108,7 @@ export function App() {
       if (useEcho.getState().phase === 'levelSelect') {
         // The first Tab also focuses a button; let its focus label happen before the full instructions.
         requestAnimationFrame(() => {
-          if (useEcho.getState().phase === 'levelSelect') void say(levelSelectPrompt());
+          if (useEcho.getState().phase === 'levelSelect') void say(levelSelectPrompt(), { display: LEVEL_LIST_HEADING });
         });
       }
     };

@@ -18,7 +18,7 @@ import { getLevel } from '../levels';
 import type { AnswerResult, LevelDef, Trial } from '../levels/types';
 import { awaitIdle, cancel, speak } from '../speech/narrator';
 import type { Pose, World } from '../types';
-import { levelSelectPrompt } from '../ui/labels';
+import { LEVEL_LIST_HEADING, levelSelectPrompt } from '../ui/labels';
 import { logRun, logTrial, levelStats, suggestedStretch, type TrialLogEntry } from './progress';
 import { useEcho, type Action, type ClickSource, type LevelId } from './store';
 
@@ -42,9 +42,10 @@ function currentLevel(): LevelDef | null {
 // ---------- narration routing ----------
 
 /** Shows text in the blind view and sends it to exactly one narration channel (voice OR aria-live). */
-export async function say(text: string, opts: { isError?: boolean } = {}): Promise<void> {
+export async function say(text: string, opts: { isError?: boolean; display?: string } = {}): Promise<void> {
   const st = S();
-  st.patch({ message: text });
+  // `display` is a shorter line for the screen when the spoken text is long (the level-list instructions).
+  st.patch({ message: opts.display ?? text });
   if (st.settings.narration === 'voice') {
     cancel();
     if (opts.isError) announce(text, true);
@@ -93,7 +94,7 @@ export async function goToLevelSelect(): Promise<void> {
   stopAll();
   finalizePendingLog();
   S().patch({ phase: 'levelSelect', levelId: null, trial: null, lastHits: [], lastPose: null, stretchOffer: null });
-  await say(levelSelectPrompt());
+  await say(levelSelectPrompt(), { display: LEVEL_LIST_HEADING });
 }
 
 export async function startLevel(id: LevelId): Promise<void> {
@@ -396,7 +397,7 @@ export async function setClickSource(source: ClickSource): Promise<ClickSource> 
 
 async function help(): Promise<void> {
   if (S().phase === 'levelSelect') {
-    await say(levelSelectPrompt());
+    await say(levelSelectPrompt(), { display: LEVEL_LIST_HEADING });
     return;
   }
   const level = currentLevel();

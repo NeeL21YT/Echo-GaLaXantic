@@ -23,6 +23,8 @@ export type Phrases = {
   help: string;
   tone: (side: 'left' | 'right') => string;
   areaLabel: string;
+  /** Full spoken level-list prompt, or null to build it from the level shortcut keys. */
+  levelPrompt: string | null;
 };
 
 export const PHRASES: Record<InputStyle, Phrases> = {
@@ -41,6 +43,7 @@ export const PHRASES: Record<InputStyle, Phrases> = {
     help: 'Space clicks. R replays. C compares. N goes to the next trial. V shows the observer view. Escape goes to the level list.',
     tone: (side) => `Press ${side} arrow when you hear the tone.`,
     areaLabel: 'Echo practice area. Press H for help.',
+    levelPrompt: null,
   },
   touch: {
     click: 'Tap anywhere to click.',
@@ -57,6 +60,8 @@ export const PHRASES: Record<InputStyle, Phrases> = {
     help: 'Tap to click. Double tap to replay. Triple tap to compare. Swipe to answer, turn or walk. Press and hold to continue. Tap with two fingers for help. Tap with three fingers for the level list.',
     tone: (side) => `Press the ${side} button when you hear the tone.`,
     areaLabel: 'Echo practice area. Tap with two fingers for help.',
+    levelPrompt:
+      'Choose a lesson or a level. Touch and hold a card to hear it, then lift and tap to open it. Or use the volume buttons: down moves through the list, up chooses.',
   },
   buttons: {
     click: 'Use the Click button.',
@@ -73,5 +78,6 @@ export const PHRASES: Record<InputStyle, Phrases> = {
     help: 'Every action is a button: Click, the answers, Replay, Contrast, Next, Help and Levels.',
     tone: (side) => `Press the ${side} button when you hear the tone.`,
     areaLabel: 'Echo practice area. Use the Help button.',
+    levelPrompt: 'Choose a lesson or a level. Every card is a button.',
   },
 };

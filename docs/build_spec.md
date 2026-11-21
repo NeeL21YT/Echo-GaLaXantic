@@ -566,3 +566,8 @@ With our own voice on and no screen reader, holding a finger on a button, card, 
 Idea from V-Braille (Jayant et al., ASSETS 2010): distinct vibration patterns can be told apart by touch after minutes of familiarization. Settings `Feel the answer` (off by default) vibrates once per answer and once per result: left one short buzz · right two short · near one tick · far one long · pass three growing buzzes · miss long then short · bump three even buzzes. Patterns live in `config.ts` (`HAPTIC`), must all differ, and stay under 700 ms. Independent of Morse, which spells words; this only confirms.
 
 Note: on Android a long press can make the browser cancel the pointer. A cancel without movement must not abort a pending read, and a cancelled touch must not leave the click guard armed (it would swallow the next tap).
+
+### 13.10 Native speech and key capture (found on a real phone)
+- Android WebView has **no** `speechSynthesis`, so the web narrator was silent in the app. On native, `speech/narrator.ts` speaks through the system text-to-speech engine via `EchoNativePlugin.speak` / `stopSpeaking`, with a `speechEnd` event per utterance. The manifest needs a `<queries>` entry for `TTS_SERVICE` on Android 11+.
+- A captured volume key must be swallowed on **key-up** as well as key-down, or the system still changes the volume and shows its slider.
+- Long spoken instructions must not be shown as the on-screen message (`say(text, { display })`), or the level list is pushed off the screen.

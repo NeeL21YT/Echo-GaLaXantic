@@ -35,6 +35,13 @@
         </provider>
     </application>
 
+    <!-- Android 11+ hides other apps from us unless declared; without this the text-to-speech engine cannot be found. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+
     <!-- Permissions -->
 
     <!-- Echo is fully offline, so there is no INTERNET permission. -->
