@@ -15,6 +15,7 @@ import { getLevel } from '../levels';
 import type { AnswerResult, LevelDef, Trial } from '../levels/types';
 import { awaitIdle, cancel, speak } from '../speech/narrator';
 import type { Pose, World } from '../types';
+import { levelSelectPrompt } from '../ui/labels';
 import { logRun, logTrial, levelStats, suggestedStretch, type TrialLogEntry } from './progress';
 import { useEcho, type Action, type ClickSource, type LevelId } from './store';
 
@@ -89,7 +90,7 @@ export async function goToLevelSelect(): Promise<void> {
   stopAll();
   finalizePendingLog();
   S().patch({ phase: 'levelSelect', levelId: null, trial: null, lastHits: [], lastPose: null, stretchOffer: null });
-  await say('Choose a level.');
+  await say(levelSelectPrompt());
 }
 
 export async function startLevel(id: LevelId): Promise<void> {
@@ -170,6 +171,9 @@ export async function click(): Promise<void> {
   await silenceSpeech();
   if (!isCurrent(id)) return;
   const { hits, voices, buffer } = await renderFrom(trial.world, pose, trial.seed);
+  if (!isCurrent(id)) return;
+  // Keyboard focus may have started a label while the offline render was pending.
+  await silenceSpeech();
   if (!isCurrent(id)) return;
   const now = S();
   now.patch({
@@ -268,6 +272,8 @@ async function contrast(): Promise<void> {
     await sayLabel(item.label);
     if (!isCurrent(id)) return;
     const { buffer } = await renderFrom(item.world, pose, seed);
+    if (!isCurrent(id)) return;
+    await silenceSpeech();
     if (!isCurrent(id)) return;
     await play(buffer);
   }
@@ -378,6 +384,10 @@ export async function setClickSource(source: ClickSource): Promise<ClickSource> 
 // ---------- help, stretch, dispatch ----------
 
 async function help(): Promise<void> {
+  if (S().phase === 'levelSelect') {
+    await say(levelSelectPrompt());
+    return;
+  }
   const level = currentLevel();
   const keys = 'Space clicks. R replays. C compares. N goes to the next trial. V shows the observer view. Escape goes to the level list.';
   await say(level ? `${readyHint(level)} ${keys}` : keys);
@@ -451,6 +461,8 @@ export function validActions(): Action[] {
   const level = currentLevel();
   const common: Action[] = ['help', 'observer', 'levelSelect'];
   switch (st.phase) {
+    case 'levelSelect':
+      return ['help'];
     case 'intro':
       return ['answer', ...common];
     case 'ready': {

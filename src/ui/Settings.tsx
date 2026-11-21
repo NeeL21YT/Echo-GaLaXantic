@@ -6,7 +6,7 @@ import { spokenNumber } from '../levels/feedback';
 import { resetProgress, setOnboarded } from '../state/progress';
 import { say, setClickSource } from '../state/runner';
 import { useEcho, type ClickSource, type Narration } from '../state/store';
-import { stretchLabel } from './labels';
+import { START_PROMPT, stretchLabel } from './labels';
 
 type Props = { onClose: () => void };
 
@@ -20,7 +20,7 @@ export function Settings({ onClose }: Props) {
 
   const redoSetup = () => {
     setOnboarded(false);
-    patch({ phase: 'onboarding', levelId: null, trial: null, message: 'Echo. Press Start.' });
+    patch({ phase: 'onboarding', levelId: null, trial: null, message: START_PROMPT });
     onClose();
   };
 

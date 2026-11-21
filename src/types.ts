@@ -23,3 +23,11 @@ export type Hit = {
   kind: 'wall' | 'pole';
 };
 export type EchoVoice = { delayS: number; gain: number; cutoffHz: number; azDeg: number; d: number };
+
+export type OnboardingStep = 'start' | 'narration' | 'headphones' | 'mic' | 'micTest';
+export type OnboardingAction = 'start' | 'screenreader' | 'voice' | 'left' | 'right' | 'skipMic' | 'enableMic' | 'done';
+export type KeyboardContext = import('./state/store').Phase | OnboardingStep;
+export type KeyboardCommand =
+  | { type: 'action'; action: import('./state/store').Action }
+  | { type: 'level'; levelId: import('./state/store').LevelId }
+  | { type: 'onboarding'; action: OnboardingAction };

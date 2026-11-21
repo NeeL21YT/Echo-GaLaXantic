@@ -108,6 +108,9 @@ export const NARRATION = {
 // Feedback (§7.3).
 export const CONTRAST_PAUSE_MS = 400;
 
+// Setup thresholds do not affect rendered sound.
+export const ONBOARDING = { micTestClicks: 3, headphoneMisses: 2 } as const;
+
 // Level definitions (§7.2). Pass thresholds are "exactly as submitted" — change only with a Decisions log line.
 export const LEVEL = {
   l1: { wallDistM: 1.5, trials: 10, passCorrect: 8 },

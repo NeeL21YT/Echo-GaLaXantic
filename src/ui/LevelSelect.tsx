@@ -14,6 +14,7 @@ export function LevelSelect() {
           <button key={level.id} type="button" onClick={() => void startLevel(level.id)}>
             Level {level.id}: {level.title} — {level.skill}
             {best}
+            <span className="key-hint"> ({level.id})</span>
           </button>
         );
       })}
