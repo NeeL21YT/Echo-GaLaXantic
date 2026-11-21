@@ -2,24 +2,26 @@
 import { LEVELS } from '../levels';
 import { levelStats } from '../state/progress';
 import { useEcho } from '../state/store';
-
-const fmt = (s: { score: number; total: number } | null) => (s ? `${s.score} out of ${s.total}` : 'none yet');
+import { progressLine } from './labels';
 
 export function ProgressPanel() {
   const stretch = useEcho((s) => s.settings.stretch);
+  // Subscribed so the list refreshes after Reset progress.
+  useEcho((s) => s.progressVersion);
+  const lines = LEVELS.map((level) => ({ id: level.id, text: progressLine(level.id, levelStats(level.id, stretch)) }))
+    .filter((line): line is { id: typeof line.id; text: string } => line.text !== null);
   return (
     <section className="progress-panel" aria-label="Your progress">
       <h2>Your progress</h2>
-      <ul>
-        {LEVELS.map((level) => {
-          const st = levelStats(level.id, stretch);
-          return (
-            <li key={level.id}>
-              Level {level.id}: last {fmt(st.lastScore)}, previous {fmt(st.prevScore)}, best {fmt(st.bestScore)}.
-            </li>
-          );
-        })}
-      </ul>
+      {lines.length === 0 ? (
+        <p>No scores yet.</p>
+      ) : (
+        <ul>
+          {lines.map((line) => (
+            <li key={line.id}>{line.text}</li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

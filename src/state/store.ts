@@ -72,13 +72,21 @@ export type EchoState = {
   lastHits: Hit[];
   /** Pose the last stimulus was rendered from; the observer view draws rays from here. */
   lastPose: Pose | null;
+  /** Pose the player answered from; the contrast examples render from here, as the level contract says. */
+  answerPose: Pose | null;
   /** Increments on every click so the observer view re-animates even when hits are identical. */
   shotId: number;
   stretchOffer: number | null;
+  /** Bumped when stored scores are deleted, so panels that read them re-render. */
+  progressVersion: number;
+  /** True while the Settings panel is on top; background input such as mic clicks must stay quiet. App.tsx keeps it in step. */
+  settingsOpen: boolean;
   settings: Settings;
   /** Native only: TalkBack or another screen reader is on, so Echo's own voice and touch gestures stand down. */
   screenReaderOn: boolean;
   micOn: boolean;
+  /** Native only: Android refused the microphone, so an Open settings button is shown. */
+  micBlocked: boolean;
   /** Tongue clicks detected this session (onboarding shows the count). */
   micClicks: number;
   /** Current text shown in BlindView and sent to narration/announcer. */
@@ -125,12 +133,16 @@ export const useEcho = create<EchoState>()((set) => ({
   lastVoices: [],
   lastHits: [],
   lastPose: null,
+  answerPose: null,
   shotId: 0,
   stretchOffer: null,
+  progressVersion: 0,
+  settingsOpen: false,
   // The mic needs a fresh permission grant each session, so every session starts on the Space key.
   settings: { ...DEFAULT_SETTINGS, ...loadSettings(), clickSource: 'key' },
   screenReaderOn: false,
   micOn: false,
+  micBlocked: false,
   micClicks: 0,
   message: onboarded ? 'Welcome back. Choose a level.' : START_PROMPT,
   announcement: { text: '', id: 0, isError: false },
