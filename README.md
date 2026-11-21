@@ -1,71 +1,104 @@
-# Echo — Project Docs Bundle
+# Echo
 
-**Team GaLaXantic · Orbix 48-Hour Global Open Innovation Hackathon (Makers Need More, 21–23 Nov 2026)**
+Echo is a free, browser-based practice space where blind people learn human echolocation. You click (Space key or a real tongue click), Echo traces that click through a simplified 2D room, and every echo plays in 3D through headphones.
 
-Echo is a free, browser-based practice space where blind people learn human echolocation. The player clicks (the Space key or a real tongue click), Echo ray-casts that click through a virtual 2D room, and every echo plays in 3D through headphones. Five levels each teach one skill. "Training wheels" slow the echoes down, then return them to real speed.
+Five levels each teach one skill. Training wheels slow the echoes down at first, then bring them back toward real speed.
 
-This bundle holds everything Claude Code needs to build Echo, and everything the team needs to pitch it.
+Live URL: (not deployed yet)
 
----
+Team GaLaXantic, Orbix 48-Hour Hackathon (Makers Need More), November 2026.
 
-## Files in this bundle
+## Requirements
 
-| File | Who reads it | What's in it |
-|---|---|---|
-| `README.md` | Everyone, first | This file: what each document is, where things live, how to start |
-| `CLAUDE.md` | Claude Code, every session | Rules Claude follows for the whole build: fixed stack, dependency ban, echo-model rules, accessibility rules, text rules, testing, report format, feature freeze, decisions log |
-| `build_spec.md` | Claude Code + all devs | **The main document.** Architecture, folder structure, every constant, engine formulas, audio graph, mic detection, five level definitions, feedback loop, state machine, UI/accessibility, tests, the build segments with task checklists and owners, cut order, definition of done |
-| `idea_and_strategy.md` | Team, judges, repo visitors | **The flagship document.** Problem with sources, who it's for, solution, the engine in plain words, differentiation from existing apps, honest limits, impact path, judging-criteria map, 3-minute demo script, pitch wording rules, Q&A prep, references |
-| `claude_code_prompts.md` | Whoever drives Claude Code | Copy-paste prompts P0–P8, one per build segment, plus utility prompts for gate tuning, bug fixes, spec checks and pitch explanations |
+- Desktop Chrome (Firefox is the secondary target).
+- Wired headphones. They are the tested setup.
+- No account, no backend. The app works offline after the first load.
 
-## Where to find specific things
+## How to run
 
-| Looking for | Go to |
+```bash
+npm install
+npm run dev       # local dev server
+npm test          # unit tests (Vitest)
+npm run build     # type check and production build
+npm run preview   # serve the production build locally
+```
+
+Dev-only audio tuning page: open `/?dev=audio` on the dev server. It is not included in production builds.
+
+## How to use
+
+1. Put on headphones and press **Start**.
+2. Onboarding asks three things:
+   - Do you use a screen reader? This sets how Echo speaks.
+   - Headphone check: press the left or right arrow for the side where you hear the tone.
+   - Optional: use your own tongue click through the microphone. Skip uses the Space key.
+3. Pick a level from the level list.
+4. Click, answer, then listen to the feedback. Replay or compare as often as you like.
+
+### Levels
+
+| # | Title | Skill | Action | Pass |
+|---|---|---|---|---|
+| 1 | Which side? | Direction | Click (Space) as often as wanted, answer ← / → | ≥ 8/10 |
+| 2 | Near or far? | Distance | Click, answer 1 (near) / 2 (far) | ≥ 8/10 |
+| 3 | Find the door | Gaps are silent | A/D to turn, Space to click, Enter when facing the door | Each trial correct if \|heading − bearing to gap centre\| ≤ 20°. Pass at ≥ 4/5 |
+| 4 | The pole | Small objects | W/S walk, A/D turn, Space click; reach the far end | A run passes if the end is reached with 0 collisions. Pass at ≥ 2/3 |
+| 5 | Escape | Combined | Walk to the exit | Exit reached in < 90 s. Collisions are counted but don't fail the run |
+
+Bumps (collisions) play a soft sound and say "Bump." There are no fail screens.
+
+### Key map
+
+The practice area has focus while you use these keys. Every action is also a button.
+
+| Key | Action |
 |---|---|
-| Echo formulas (delay, gain, cutoff) | `build_spec.md` §5.3 · `idea_and_strategy.md` §3 |
-| Every tunable number | `build_spec.md` §4 (becomes `src/config.ts`) |
-| Level rules and pass conditions | `build_spec.md` §7.2 |
-| What the feedback says after an answer | `build_spec.md` §7.3 |
-| Key map and buttons | `build_spec.md` §9.2–9.3 |
-| Screen reader vs voice narration | `build_spec.md` §9.4 · `CLAUDE.md` Accessibility rules |
-| Who builds what, and when | `build_spec.md` §11 |
-| The hour-10 blindfold gate | `build_spec.md` §10.2 |
-| What to cut if we're late | `build_spec.md` §11, "Cut order" |
-| Pitch script and Q&A | `idea_and_strategy.md` §8–10 |
-| Wording we must avoid | `idea_and_strategy.md` §9 |
-| Research sources | `idea_and_strategy.md` Sources |
+| Space | Click |
+| ← / → | Answer left / right |
+| 1 / 2 | Answer near / far |
+| A / D | Turn left / right |
+| W / S | Step forward / back |
+| Enter | Begin, answer, or next (depends on the screen) |
+| R | Replay the last sound |
+| C | Compare: without the object, then with it |
+| N | Next trial |
+| Y | Accept faster echoes (training wheels offer) |
+| V | Observer view (rays are drawn on screen) |
+| H | Help: speaks the key map |
+| Esc | Back to the level list |
 
-## How to start the build
+### Training wheels
 
-1. Create an empty repo named `echo`.
-2. Place the files:
-   ```
-   echo/
-   ├── CLAUDE.md
-   ├── README.md                 ← replaced by the project README in prompt P8
-   └── docs/
-       ├── build_spec.md
-       ├── idea_and_strategy.md
-       └── claude_code_prompts.md
-   ```
-3. Open Claude Code in `echo/` and paste **P0** from `claude_code_prompts.md`.
-4. Continue with P1–P8 in order. P1/P2/P3 and P5/P6 can run in parallel on separate branches (owners in `build_spec.md` §11).
-5. After every prompt, do the manual check Claude lists, then commit as `seg<N>: <what>`.
-6. At about hour 10, run the blindfold gate. If it fails, use **P4b** before building anything else.
-7. Feature freeze at hour 29. After that, use the bug-report prompt only.
+- Echo speed starts at 4 times slower. The steps are 8, 6, 4, 3, 2, 1.5 and 1 times slower. At 1 the echoes play at real speed.
+- After 3 passes in a row at the current speed, Echo offers the next step closer to real speed. Press Y to accept.
+- Change the speed in Settings at any time.
 
-## Team roles
+## Folder map
 
-| Role | Owns |
-|---|---|
-| A — Audio engineer | Click, offline render, HRTF, limiter, mic detection, SFX |
-| B — Geometry and levels | Ray caster, echo builder, collisions, worlds, Levels 1–5 |
-| C — Visuals and UX | Observer view, blind view, controls, onboarding, settings, progress |
-| D — Integration and pitch | Scaffold, deploy, blind tests, README, slides, demo video |
+- `src/engine`: pure echo model. Ray casting, echo builder, collisions, worlds. No DOM, no audio.
+- `src/audio`: Web Audio. Click, offline rendering, HRTF player, mic click detector, sound effects.
+- `src/speech`: narration. Spoken voice or a screen reader live region, never both.
+- `src/levels`: the five level definitions and the spoken feedback after each answer.
+- `src/state`: game flow (runner), Zustand store, and progress saved on this device.
+- `src/input`: keyboard map for the practice area.
+- `src/ui`: React screens. Onboarding, level list, blind view, observer view, settings, progress.
+- `tests`: Vitest unit tests for the engine, levels and geometry.
+- `public/sw.js`: service worker for offline reloads of app files.
+- `src/config.ts`: every tunable number, with a comment for each.
 
-## Tech at a glance
-React 18 · Vite · TypeScript · Web Audio API (HRTF panner, OfflineAudioContext) · Canvas 2D · Web Speech API · Zustand · Vitest · Vercel. No backend, no ML, and it works offline after the first load.
+Docs: `docs/build_spec.md` (architecture, formulas, levels, UI, tests), `docs/idea_and_strategy.md` (problem, pitch, honest limits), `docs/claude_code_prompts.md` (build prompts), and `CLAUDE.md` (rules for the build).
 
-## Ground rules
-- `build_spec.md` wins over everything except a deliberate team decision. Log such decisions in `CLAUDE.md` § Decisions log.
-- Echo complements the long cane. It is a seated practice tool, not a navigation aid, and it is simplified by design. Say so in the app, the README and the pitch.
+## Honest limits
+
+- Echo uses a simplified 2D model. It has no diffraction and no real reverb. It trains attention to echo cues (direction, delay, gaps). It does not reproduce real acoustics.
+- Echo is not a navigation aid. Practice is seated.
+- Echo complements the long cane. It does not replace it.
+- The training effect is not clinically validated. Whether practice transfers to real-world echolocation is a hypothesis that needs testing with blind learners and orientation and mobility trainers.
+- It needs headphones. Wired headphones are the tested setup.
+
+## Credits
+
+Built by Team GaLaXantic for the Orbix hackathon.
+
+Background and sources: [docs/idea_and_strategy.md](docs/idea_and_strategy.md).

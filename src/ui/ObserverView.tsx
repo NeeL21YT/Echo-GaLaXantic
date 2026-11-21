@@ -1,6 +1,7 @@
 // Top-down Canvas 2D view for sighted spectators (§9.1). World +y is up on screen, so y is flipped here only.
 import { useEffect, useRef } from 'react';
 import { MAX_RANGE_M, OBSERVER, RAY_COUNT, RAY_STEP_DEG } from '../config';
+import { spokenNumber } from '../levels/feedback';
 import { makeVoice } from '../engine/echoBuilder';
 import { dirFromHeading } from '../engine/geometry';
 import type { Hit, Pose, Vec2, World } from '../types';
@@ -174,7 +175,7 @@ export function ObserverView(props: Props) {
 
   const summary =
     props.rayPose && !props.hideWorld
-      ? `Observer view. ${props.hits.length} of ${RAY_COUNT} rays returned an echo.`
+      ? `Observer view. ${spokenNumber(props.hits.length)} of ${spokenNumber(RAY_COUNT)} rays returned an echo.`
       : 'Observer view.';
 
   return <canvas ref={canvasRef} className="observer-canvas" role="img" aria-label={summary} />;

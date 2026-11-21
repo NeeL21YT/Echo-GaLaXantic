@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { STRETCH_STEPS } from '../config';
 import { getSettingsReport } from '../audio/micDetector';
+import { spokenNumber } from '../levels/feedback';
 import { resetProgress, setOnboarded } from '../state/progress';
 import { say, setClickSource } from '../state/runner';
 import { useEcho, type ClickSource, type Narration } from '../state/store';
@@ -66,7 +67,7 @@ export function Settings({ onClose }: Props) {
       <p>{micOn ? `Mic on. ${getSettingsReport()}` : 'Mic off.'}</p>
 
       <label>
-        Volume {Math.round(settings.volume * 100)} percent
+        Volume {spokenNumber(Math.round(settings.volume * 100))} percent
         <input
           type="range"
           min={0}
@@ -82,7 +83,13 @@ export function Settings({ onClose }: Props) {
           Redo setup
         </button>
         {!confirmReset ? (
-          <button type="button" onClick={() => setConfirmReset(true)}>
+          <button
+            type="button"
+            onClick={() => {
+              setConfirmReset(true);
+              void say('Delete all scores on this device? Press Yes to reset, or No to keep them.');
+            }}
+          >
             Reset progress
           </button>
         ) : (

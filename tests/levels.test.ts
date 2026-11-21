@@ -241,7 +241,7 @@ describe('level four', () => {
     'describes the nearest wall at heading %s', (headingDeg, direction) => {
       const trial = run(level4, 42)[0]!;
       const result = level4.check(trial, 'bump', { p: { x: 0.75, y: 2 }, headingDeg }, 0);
-      expect(result.explanation).toBe(`That was the wall ${direction}.`);
+      expect(result.explanation).toBe(`That was the wall ${direction}. A wall gives a strong, close echo.`);
       expect(result.correct).toBe(false);
     },
   );
@@ -264,7 +264,7 @@ describe('level five', () => {
   it('keeps bump feedback unscored and names the wall and open echo cue', () => {
     const trial = run(level5, 42)[0]!;
     expect(level5.check(trial, 'bump', { p: { x: -0.75, y: 3 }, headingDeg: 0 }, 1)).toEqual({ correct: false,
-      explanation: 'That was the wall on your left. Turn toward the side where the echo opens up.' });
+      explanation: 'That was the wall on your left. A wall gives a strong, close echo. Turn toward the side where the echo opens up.' });
   });
 });
 

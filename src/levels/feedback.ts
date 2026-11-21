@@ -79,7 +79,7 @@ export function wallBumpExplanation(world: World, pose: Pose): string {
   const direction = magnitude <= LEVEL_FEEDBACK.wallAheadDeg ? 'ahead'
     : magnitude >= LEVEL_FEEDBACK.fullTurnDeg / 2 - LEVEL_FEEDBACK.wallAheadDeg ? 'behind you'
       : `on your ${relative < 0 ? 'left' : 'right'}`;
-  return `That was the wall ${direction}.`;
+  return `That was the wall ${direction}. A wall gives a strong, close echo.`;
 }
 
 export function poleBumpExplanation(world: World, pose: Pose): string {

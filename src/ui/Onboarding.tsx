@@ -4,6 +4,7 @@
 import { useEffect, useState, type KeyboardEvent } from 'react';
 import { unlockAudio } from '../audio/context';
 import { lrTest } from '../audio/sfx';
+import { spokenNumber } from '../levels/feedback';
 import { initNarrator, speak } from '../speech/narrator';
 import { setOnboarded } from '../state/progress';
 import { goToLevelSelect, say, setClickSource } from '../state/runner';
@@ -145,7 +146,9 @@ function MicTest({ baseline, onDone }: MicTestProps) {
 
   useEffect(() => {
     if (heard <= 0) return;
-    const text = heard >= MIC_TEST_CLICKS ? `${heard} clicks heard. The microphone works.` : `${heard}.`;
+    const text = heard >= MIC_TEST_CLICKS
+      ? `${spokenNumber(heard)} clicks heard. The microphone works.`
+      : `${spokenNumber(heard)} clicks heard so far.`;
     if (narration === 'voice') void speak(text);
   }, [heard, narration]);
 
