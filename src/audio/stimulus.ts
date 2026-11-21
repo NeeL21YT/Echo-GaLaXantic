@@ -4,6 +4,7 @@ import {
   DIRECT_CLICK_GAIN,
   LOWPASS_Q,
   SAMPLE_RATE,
+  STIMULUS_GAIN,
   STIMULUS_TAIL_S,
 } from '../config';
 import type { EchoVoice } from '../types';
@@ -36,10 +37,15 @@ export async function renderStimulus(voices: EchoVoice[], opts: RenderOptions): 
     l.upZ.value = 0;
   }
 
+  // One fixed pre-gain for direct click and echoes alike keeps every relative cue while leaving headroom for
+  // coherent echo sums near corners.
+  const stimulusBus = new GainNode(off, { gain: STIMULUS_GAIN });
+  stimulusBus.connect(off.destination);
+
   if (opts.includeDirect) {
     const src = new AudioBufferSourceNode(off, { buffer: click });
     const g = new GainNode(off, { gain: DIRECT_CLICK_GAIN });
-    src.connect(g).connect(off.destination);
+    src.connect(g).connect(stimulusBus);
     src.start(0);
   }
 
@@ -60,7 +66,7 @@ export async function renderStimulus(voices: EchoVoice[], opts: RenderOptions): 
       positionY: 0,
       positionZ: -Math.cos(az),
     });
-    src.connect(lp).connect(g).connect(pan).connect(off.destination);
+    src.connect(lp).connect(g).connect(pan).connect(stimulusBus);
     src.start(v.delayS);
   }
 

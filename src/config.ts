@@ -11,6 +11,11 @@ export const MERGE_AZ_BIN_DEG = 15;
 export const MERGE_DIST_BIN_M = 0.25;
 
 export const ECHO_GAIN_SCALE = 1.0;         // TUNE at the hour-10 gate (deck formula × this)
+// Fixed pre-gain on every stimulus (direct click and echoes alike), so all relative cues are untouched.
+// Why: up to 24 echo voices at near-identical delays add coherently when the player is ~0.25-0.4 m from two walls,
+// and the unscaled sum peaked at 4.67 (L4/L5 corridor corners) and 2.15 (L3 room corners) against the 0.98
+// clip limit (§10.2). 0.18 puts the worst reachable pose at about 0.84. Per-scene normalising is forbidden.
+export const STIMULUS_GAIN = 0.18;
 export const DIRECT_CLICK_GAIN = 0.5;       // direct path in key mode; 0 in mic mode
 export const LOWPASS_NUMERATOR_HZ = 9000;   // cutoff = 9000 / (1 + d)
 export const LOWPASS_Q = 0.707;
@@ -42,7 +47,7 @@ export const MIC = {
   fftSize: 1024,
 };
 
-export const RENDER_VERSION = 2;            // bump when the echo model changes; logged per trial
+export const RENDER_VERSION = 3;            // bump when the echo model changes; logged per trial
 
 // --- Additions beyond spec §4 (see CLAUDE.md Decisions log) ---
 
