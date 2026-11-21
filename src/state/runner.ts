@@ -3,33 +3,46 @@
 // work started before Esc/Next can never play or overwrite state.
 import { CONTRAST_PAUSE_MS, MORSE, NARRATION, RENDER_VERSION, STEP_M, TURN_DEG } from '../config';
 import { start as startMic, stop as stopMic } from '../audio/micDetector';
-import { playMorse } from '../audio/morsePlayer';
+import { cancelMorse, playMorse } from '../audio/morsePlayer';
 import { feel, feelAnswer } from './haptics';
 import { play, stopAll } from '../audio/player';
-import { bump, correct, footstep, levelUp, wrong } from '../audio/sfx';
+import { bump, correct, footstep, levelUp, turnTick, wrong } from '../audio/sfx';
 import { renderStimulus } from '../audio/stimulus';
 import { move, reachedExit, turn } from '../engine/collision';
 import { buildEchoes } from '../engine/echoBuilder';
 import { castRays } from '../engine/raycaster';
 import { mulberry32 } from '../engine/rng';
 import { phrases } from '../input/inputStyle';
+import { requestMicPermission } from '../native/echoNative';
 import { ACTION_KEY } from '../input/keyboard';
 import { getLevel } from '../levels';
 import type { AnswerResult, LevelDef, Trial } from '../levels/types';
 import { awaitIdle, cancel, speak } from '../speech/narrator';
 import type { Pose, World } from '../types';
-import { LEVEL_LIST_HEADING, levelSelectPrompt } from '../ui/labels';
+import { spokenDecimal, spokenNumber } from '../levels/feedback';
+import { LEVEL_LIST_HEADING, levelSelectPrompt, stretchLabel } from '../ui/labels';
 import { logRun, logTrial, levelStats, suggestedStretch, type TrialLogEntry } from './progress';
 import { useEcho, type Action, type ClickSource, type LevelId } from './store';
 
 const S = () => useEcho.getState();
+/** The message micDetector throws when a start is cancelled while the permission prompt is open. */
+const MIC_CANCELLED = 'microphone start cancelled';
+const capital = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
 
 let jobId = 0;
 let runSeed = 0;
 let runStartedAt = 0;
 let pendingLog: TrialLogEntry | null = null;
+/** Job id of the click being rendered, so an answer that arrives mid-render is not mistaken for "no click yet". */
+let clickJob = 0;
+/** When the app went to the background, so a paused Escape run does not lose its 90 seconds. */
+let hiddenAt: number | null = null;
 
-const newJob = () => ++jobId;
+// A new job also cuts off any Morse still waiting or playing, so a code never lands on the next thing the learner does.
+const newJob = () => {
+  cancelMorse();
+  return ++jobId;
+};
 const isCurrent = (id: number) => id === jobId;
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const nowS = () => performance.now() / 1000;
@@ -77,22 +90,41 @@ export async function silenceSpeech(): Promise<void> {
   }
 }
 
+/** Morse is requested after the speech it follows has started; a screen reader's speech cannot be observed, so wait. */
+function morse(text: string): void {
+  const mode = S().settings.morse;
+  if (mode === 'off') return;
+  const id = jobId;
+  void (async () => {
+    if (S().settings.narration !== 'voice') await sleep(NARRATION.screenReaderLabelGapMs);
+    if (isCurrent(id)) await playMorse(text, mode);
+  })();
+}
+
 // ---------- rendering ----------
 
-export async function renderFrom(world: World, pose: Pose, seed: number) {
+export async function renderFrom(world: World, pose: Pose, seed: number, includeDirect = S().settings.clickSource === 'key') {
   const st = S();
   const hits = castRays(world, pose);
   const voices = buildEchoes(hits, st.settings.stretch);
-  const buffer = await renderStimulus(voices, { includeDirect: st.settings.clickSource === 'key', seed });
+  const buffer = await renderStimulus(voices, { includeDirect, seed });
   return { hits, voices, buffer };
 }
 
 // ---------- level flow ----------
 
+/** The level list and Settings are not practice, so the microphone must not record there. The click source stays 'mic'. */
+export function pauseMic(): void {
+  if (!S().micOn) return;
+  stopMic();
+  S().patch({ micOn: false });
+}
+
 export async function goToLevelSelect(): Promise<void> {
   newJob();
   stopAll();
   finalizePendingLog();
+  pauseMic();
   S().patch({ phase: 'levelSelect', levelId: null, trial: null, lastHits: [], lastPose: null, stretchOffer: null });
   await say(levelSelectPrompt(), { display: LEVEL_LIST_HEADING });
 }
@@ -100,6 +132,7 @@ export async function goToLevelSelect(): Promise<void> {
 export async function startLevel(id: LevelId): Promise<void> {
   newJob();
   stopAll();
+  finalizePendingLog();
   const level = getLevel(id);
   runSeed = (Date.now() ^ (id << 16)) >>> 0;
   S().patch({
@@ -116,9 +149,12 @@ export async function startLevel(id: LevelId): Promise<void> {
     lastPose: null,
     stretchOffer: null,
   });
+  // Listening starts with practice; a refusal is spoken by setClickSource and the Space key or Click button carries on.
+  if (S().settings.clickSource === 'mic' && !S().micOn) await setClickSource('mic');
   const title = /[.?!]$/.test(level.title) ? level.title : `${level.title}.`;
-  void playMorse(String(id), S().settings.morse);
-  await say(`Level ${id}. ${title} ${level.intro} ${readyHint(level)} ${phrases().begin}`);
+  const speech = say(`Level ${spokenNumber(id)}. ${title} ${level.intro} ${readyHint(level)} ${phrases().begin}`);
+  morse(String(id));
+  await speech;
 }
 
 function beginTrial(index: number): void {
@@ -144,18 +180,26 @@ function beginTrial(index: number): void {
     lastPose: null,
     lastStimulus: null,
   });
-  void say(index === 0 ? `Trial 1 of ${level.trials}. ${readyHint(level)}` : `Trial ${index + 1} of ${level.trials}.`);
+  const trialLine = `Trial ${spokenNumber(index + 1)} of ${spokenNumber(level.trials)}.`;
+  void say(index === 0 ? `${trialLine} ${readyHint(level)}` : trialLine);
 }
 
 /** How to play the level, in the words of the way the learner is controlling Echo (keys, touch or buttons). */
 function readyHint(level: LevelDef): string {
   const p = phrases();
+  const click = clickPhrase();
   if (level.mode === 'choice') {
     const sides = Object.values(level.answerKeys).includes('left');
-    return `${p.click} ${sides ? p.answerSide : p.answerDistance}`;
+    return `${click} ${sides ? p.answerSide : p.answerDistance}`;
   }
-  if (level.mode === 'aim') return `${p.turn} ${p.click} ${p.faceDoor}`;
-  return `${p.walk} ${p.turn} ${p.click}`;
+  if (level.mode === 'aim') return `${p.turn} ${click} ${p.faceDoor}`;
+  return `${p.walk} ${p.turn} ${click}`;
+}
+
+/** In mic mode the tongue click is the main way to click; the key, tap or button stays as the backup. */
+function clickPhrase(): string {
+  const click = phrases().click;
+  return S().settings.clickSource === 'mic' ? `Make a tongue click, or ${click.charAt(0).toLowerCase()}${click.slice(1)}` : click;
 }
 
 function markStarted(): void {
@@ -168,16 +212,18 @@ function trialElapsed(): number {
   return started === null ? 0 : nowS() - started;
 }
 
-export async function click(): Promise<void> {
+/** A tongue click already sounded in the room, so only a click heard by the mic is rendered without the direct click. */
+export async function click(fromMic = false): Promise<void> {
   const st = S();
   if (st.phase !== 'ready' || !st.trial) return;
   const id = newJob();
+  clickJob = id;
   stopAll();
   markStarted();
   const { trial, pose } = st;
   await silenceSpeech();
   if (!isCurrent(id)) return;
-  const { hits, voices, buffer } = await renderFrom(trial.world, pose, trial.seed);
+  const { hits, voices, buffer } = await renderFrom(trial.world, pose, trial.seed, !fromMic);
   if (!isCurrent(id)) return;
   // Keyboard focus may have started a label while the offline render was pending.
   await silenceSpeech();
@@ -207,6 +253,8 @@ async function answer(action: Action): Promise<boolean> {
   const value = answerValueFor(level, action);
   if (value === undefined) return false;
   if (st.clicksThisTrial < 1) {
+    // The click is still rendering: the sound is about to play, so the answer waits instead of being scolded.
+    if (clickJob === jobId) return true;
     await say(phrases().clickFirst);
     return true;
   }
@@ -237,14 +285,18 @@ async function finishTrial(result: AnswerResult, answerValue: string | number | 
     collisions: st.collisions,
     elapsedS: trialElapsed(),
   };
-  st.patch({ phase: 'feedback', results: [...st.results, result], lastResult: result });
+  // The first trial teaches every option; later ones only say how to go on, so nobody is left without a next step.
+  const hint = st.trialIndex === 0 ? phrases().feedbackHint(Boolean(result.contrast)) : ` ${phrases().nextHint}`;
+  const text = result.explanation + hint;
+  // The message is set now, not when speech starts, so coming back from the background can say it again.
+  st.patch({ phase: 'feedback', results: [...st.results, result], lastResult: result, answerPose: st.pose, message: text });
   feel(result.correct ? 'pass' : 'miss');
   await silenceSpeech();
   await (result.correct ? correct() : wrong());
-  void playMorse(result.correct ? MORSE.pass : MORSE.miss, st.settings.morse);
   if (!isCurrent(id)) return;
-  const hint = st.trialIndex === 0 ? phrases().feedbackHint(Boolean(result.contrast)) : '';
-  await say(result.explanation + hint);
+  const speech = say(text);
+  morse(result.correct ? MORSE.pass : MORSE.miss);
+  await speech;
 }
 
 /** Replay and contrast counts are only known once the player leaves feedback, so the log entry is written then. */
@@ -257,7 +309,11 @@ function finalizePendingLog(): void {
 
 async function replay(): Promise<void> {
   const st = S();
-  if (!st.lastStimulus || (st.phase !== 'feedback' && st.phase !== 'ready')) return;
+  if (st.phase !== 'feedback' && st.phase !== 'ready') return;
+  if (!st.lastStimulus) {
+    await say(st.phase === 'ready' ? phrases().clickFirst : 'There was no click to replay.');
+    return;
+  }
   const id = newJob();
   stopAll();
   if (st.phase === 'feedback') st.patch({ replays: st.replays + 1 });
@@ -273,7 +329,7 @@ async function contrast(): Promise<void> {
   const id = newJob();
   stopAll();
   st.patch({ contrasts: st.contrasts + 1 });
-  const pose = st.lastPose ?? st.pose;
+  const pose = st.answerPose ?? st.lastPose ?? st.pose;
   const seed = st.trial.seed;
   await silenceSpeech();
   for (const [i, item] of items.entries()) {
@@ -305,7 +361,7 @@ async function next(): Promise<void> {
 }
 
 async function summary(level: LevelDef): Promise<void> {
-  newJob();
+  const id = newJob();
   stopAll();
   const st = S();
   if (st.runId === null) return;
@@ -314,25 +370,40 @@ async function summary(level: LevelDef): Promise<void> {
   const passed = level.passRule(st.results, nowS() - runStartedAt);
   const before = levelStats(level.id, st.settings.stretch);
   logRun({ ts: Date.now(), runId: st.runId, levelId: level.id, stretch: st.settings.stretch, score, total, passed });
-  const prev = before.lastScore ? ` Previously ${before.lastScore.score} out of ${before.lastScore.total}.` : '';
+  const prev = before.lastScore ? ` Previously ${spokenNumber(before.lastScore.score)} out of ${spokenNumber(before.lastScore.total)}.` : '';
   const offer = passed ? suggestedStretch(level.id, st.settings.stretch) : null;
   st.patch({ phase: 'summary', stretchOffer: offer });
-  if (passed) await levelUp();
-  let text = `Level ${level.id}. ${score} out of ${total}.${prev} ${passed ? 'Passed.' : 'Not yet.'}`;
+  if (passed) {
+    await silenceSpeech();
+    await levelUp();
+    if (!isCurrent(id)) return;
+  }
+  let text = `Level ${spokenNumber(level.id)}. ${capital(spokenNumber(score))} out of ${spokenNumber(total)}.${prev} ${passed ? 'Passed.' : 'Not yet. You can try again.'}`;
   if (offer !== null) {
-    text += ` You passed three times in a row. Try echoes closer to real speed, at ${offer} times? ${phrases().yes}`;
+    text += ` You passed three times in a row. Try echoes ${offer === 1 ? 'at real speed' : stretchLabel(offer)} instead of ${spokenDecimal(st.settings.stretch)}? ${phrases().yes} ${phrases().levelListInstead}`;
+    await say(text);
+    return;
   }
   await say(`${text} ${phrases().levelList}`);
 }
 
 // ---------- movement (navigate levels; turning also used by aim) ----------
 
+/** Moving makes any echo still rendering or playing stale (it was made from the old pose), so it is cut off. */
+function interruptForMove(): void {
+  newJob();
+  stopAll();
+  if (S().settings.narration === 'voice') cancel();
+}
+
 async function turnBy(deltaDeg: number): Promise<boolean> {
   const st = S();
   const level = currentLevel();
   if (st.phase !== 'ready' || !level || level.mode === 'choice') return false;
   markStarted();
+  interruptForMove();
   st.patch({ pose: turn(st.pose, deltaDeg) });
+  void turnTick();
   return true;
 }
 
@@ -341,18 +412,21 @@ async function stepBy(step: number): Promise<boolean> {
   const level = currentLevel();
   if (st.phase !== 'ready' || !level || level.mode !== 'navigate' || !st.trial) return false;
   markStarted();
+  interruptForMove();
   const res = move(st.pose, step, st.trial.world);
   if (res.collided) {
     const collisions = st.collisions + 1;
     st.patch({ collisions });
     const withMeta: Trial = { ...st.trial, meta: { ...st.trial.meta, collisions } };
     const feedback = level.check(withMeta, 'bump', st.pose, trialElapsed());
-    newJob();
+    const id = newJob();
     stopAll();
     feel('bump');
     await bump();
-    void playMorse(MORSE.bump, S().settings.morse);
-    await say(`Bump. ${collisions}. ${feedback.explanation}`.trim());
+    if (!isCurrent(id)) return true;
+    const speech = say(`Bump. ${capital(spokenNumber(collisions))}. ${feedback.explanation} ${level.id === 5 ? 'Keep going.' : 'Turn and keep going.'}`.trim());
+    morse(MORSE.bump);
+    await speech;
     return true;
   }
   st.patch({ pose: res.pose });
@@ -366,6 +440,16 @@ async function stepBy(step: number): Promise<boolean> {
 
 // ---------- click source ----------
 
+/** Asks Android for the microphone before the first getUserMedia. False (after saying so) means carry on without it. */
+export async function ensureMicPermission(): Promise<boolean> {
+  const granted = await requestMicPermission();
+  S().patch({ micBlocked: !granted });
+  if (!granted) {
+    await say('The microphone is off for Echo. Use the Open settings button to turn it on, or carry on without it.', { isError: true });
+  }
+  return granted;
+}
+
 /** Switches between Space and tongue clicks. Falls back to Space if the mic is blocked. Returns the source in use. */
 export async function setClickSource(source: ClickSource): Promise<ClickSource> {
   const st = S();
@@ -375,22 +459,74 @@ export async function setClickSource(source: ClickSource): Promise<ClickSource> 
     st.patch({ micOn: false });
     return 'key';
   }
+  if (!(await ensureMicPermission())) {
+    stopMic();
+    st.setSettings({ clickSource: 'key' });
+    st.patch({ micOn: false });
+    return 'key';
+  }
   try {
     await startMic(() => {
       const now = S();
+      // Settings sits on top of the practice screen; a click behind it must not play.
+      if (now.settingsOpen) return;
       now.patch({ micClicks: now.micClicks + 1 });
-      dispatch('click');
+      dispatch('click', true);
+    }, () => {
+      // The phone or browser took the microphone away mid-run; Space, tap or the Click button still works.
+      const now = S();
+      now.setSettings({ clickSource: 'key' });
+      now.patch({ micOn: false });
+      void say(`The microphone stopped. ${phrases().click}`, { isError: true });
     });
     st.setSettings({ clickSource: 'mic' });
     st.patch({ micOn: true });
     return 'mic';
-  } catch {
+  } catch (err) {
+    // A newer start or a stop cancelled this one on purpose; that is not a blocked microphone and the newer call owns the state.
+    if (err instanceof Error && err.message === MIC_CANCELLED) return S().settings.clickSource;
     stopMic();
     st.setSettings({ clickSource: 'key' });
     st.patch({ micOn: false });
-    await say('Microphone blocked. Using the Space key.', { isError: true });
+    await say(`Microphone blocked. ${phrases().click}`, { isError: true });
     return 'key';
   }
+}
+
+// ---------- abort and background ----------
+
+/** Drops everything in flight (renders, speech, contrast, Morse) and the unwritten trial log. For Redo setup and Reset progress. */
+export function abortRun(): void {
+  newJob();
+  clickJob = 0;
+  stopAll();
+  cancel();
+  pendingLog = null;
+}
+
+/** Going to the background stops sound and freezes the Escape clock; nothing in flight may resume on its own. */
+export function pauseForBackground(): void {
+  const phase = S().phase;
+  if (hiddenAt !== null || (phase !== 'intro' && phase !== 'ready' && phase !== 'feedback' && phase !== 'summary')) return;
+  hiddenAt = nowS();
+  newJob();
+  stopAll();
+  cancel();
+}
+
+/** Coming back says where the learner is again, since whatever was being spoken was cut off. */
+export function resumeFromBackground(): void {
+  if (hiddenAt === null) return;
+  const away = nowS() - hiddenAt;
+  hiddenAt = null;
+  const st = S();
+  if (st.startedAt !== null) st.patch({ startedAt: st.startedAt + away });
+  runStartedAt += away;
+  if (st.message) void say(st.message);
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => (document.hidden ? pauseForBackground() : resumeFromBackground()));
 }
 
 // ---------- help, stretch, dispatch ----------
@@ -400,9 +536,13 @@ async function help(): Promise<void> {
     await say(levelSelectPrompt(), { display: LEVEL_LIST_HEADING });
     return;
   }
+  const p = phrases();
+  const st = S();
   const level = currentLevel();
-  const general = phrases().help;
-  await say(level ? `${readyHint(level)} ${general}` : general);
+  if (st.phase === 'intro') await say(p.begin);
+  else if (st.phase === 'feedback') await say(`${p.feedbackHint(Boolean(st.lastResult?.contrast)).trim()} ${p.help}`);
+  else if (st.phase === 'summary') await say(st.stretchOffer !== null ? `${p.yes} ${p.levelListInstead}` : p.levelList);
+  else await say(level ? `${readyHint(level)} ${p.help}` : p.help);
 }
 
 async function acceptStretch(): Promise<boolean> {
@@ -410,23 +550,23 @@ async function acceptStretch(): Promise<boolean> {
   if (st.stretchOffer === null) return false;
   st.setSettings({ stretch: st.stretchOffer });
   st.patch({ stretchOffer: null });
-  await say(`Echo speed is now ${st.stretchOffer === 1 ? 'real speed' : `${st.stretchOffer} times slower`}.`);
+  await say(`Echo speed is now ${stretchLabel(st.stretchOffer)}. ${phrases().levelList}`);
   return true;
 }
 
 /** Routes a button press or shortcut. Returns true if the action applied in the current phase. */
-export function dispatch(action: Action): boolean {
+export function dispatch(action: Action, fromMic = false): boolean {
   const st = S();
   const run = (p: Promise<unknown>) => {
     p.catch((err: unknown) => {
       console.error(err);
-      void say('Something went wrong. Press Escape for the level list.', { isError: true });
+      void say(`Something went wrong. ${phrases().levelListAnywhere}`, { isError: true });
     });
     return true;
   };
   switch (action) {
     case 'click':
-      return st.phase === 'ready' ? run(click()) : false;
+      return st.phase === 'ready' ? run(click(fromMic)) : false;
     case 'answer':
       if (st.phase === 'intro') {
         beginTrial(0);
@@ -457,7 +597,7 @@ export function dispatch(action: Action): boolean {
       return run(acceptStretch());
     case 'observer':
       st.setSettings({ observer: !st.settings.observer });
-      return true;
+      return run(say(st.settings.observer ? 'Observer view off.' : 'Observer view on.'));
     case 'help':
       return run(help());
     case 'levelSelect':

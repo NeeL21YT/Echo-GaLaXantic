@@ -1,6 +1,6 @@
 import { LEVEL } from '../config';
 import { lCorridor } from '../engine/worlds';
-import { spokenNumber, trialSeed, wallBumpExplanation } from './feedback';
+import { spokenCount, spokenNumber, trialSeed, wallBumpExplanation } from './feedback';
 import type { LevelDef } from './types';
 
 export const level5: LevelDef = {
@@ -20,7 +20,7 @@ export const level5: LevelDef = {
     const correct = elapsedS < LEVEL.l5.timeLimitS;
     const limit = spokenNumber(LEVEL.l5.timeLimitS);
     // Speak completed seconds so a sub-limit finish never sounds like it took the full limit.
-    return { correct, explanation: `You escaped in ${Math.floor(elapsedS)} seconds.`
-      + (correct ? ` That is under ${limit} seconds. Passed.` : ` Try to get out in under ${limit} seconds.`) };
+    return { correct, explanation: `You escaped in ${spokenCount(Math.floor(elapsedS), 'second')}.`
+      + (correct ? ` That is under ${limit} seconds. Passed. You followed the side where the echo opens up.` : ` Try to get out in under ${limit} seconds.`) };
   },
 };

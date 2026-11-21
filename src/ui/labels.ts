@@ -1,5 +1,6 @@
 // User-facing labels shared by the views, written the way a voice would say them.
-import { getLevel, LEVELS } from '../levels';
+import { getLevel } from '../levels';
+import { spokenDecimal, spokenNumber } from '../levels/feedback';
 import { phrases } from '../input/inputStyle';
 import type { Action, LevelId } from '../state/store';
 
@@ -11,8 +12,7 @@ export const LEVEL_LIST_HEADING = 'Choose a lesson or a level.';
 export function levelSelectPrompt(): string {
   const custom = phrases().levelPrompt;
   if (custom) return custom;
-  const choices = LEVELS.map((level) => `${level.id} for ${level.title.replace(/[.?!]+$/, '')}`);
-  return `Choose a level. Press ${choices.join(', ')}. Press H for help.`;
+  return 'Press 1 to 5 to start a level. Press Tab to reach lessons and the real room check. Press H for help.';
 }
 
 export function buttonSpeechLabel(label: string): string {
@@ -21,13 +21,13 @@ export function buttonSpeechLabel(label: string): string {
 
 export function stretchLabel(stretch: number): string {
   if (stretch === 1) return 'real speed';
-  return `${stretch} times slower`;
+  return `${spokenDecimal(stretch)} times slower`;
 }
 
 export function getLevelTitleLine(levelId: LevelId | null, trialIndex: number, trialCount: number): string {
   if (levelId === null) return '';
   const total = trialCount > 0 ? trialCount : getLevel(levelId).trials;
-  return `Level ${levelId} · Trial ${Math.min(trialIndex + 1, total)} of ${total}`;
+  return `Level ${spokenNumber(levelId)} · Trial ${spokenNumber(Math.min(trialIndex + 1, total))} of ${spokenNumber(total)}`;
 }
 
 /** Button text and its keyboard shortcut hint (§9.2). */
@@ -49,5 +49,17 @@ export const ACTION_LABELS: Record<Action, { label: string; key: string }> = {
   observer: { label: 'Observer view', key: 'V' },
   settings: { label: 'Settings', key: '' },
   help: { label: 'Help', key: 'H' },
-  levelSelect: { label: 'Levels', key: 'Esc' },
+  levelSelect: { label: 'Level list', key: 'Esc' },
 };
+
+type Score = { score: number; total: number } | null;
+
+/** One spoken line of scores for a level, with empty fields left out; null when the level has no score yet. */
+export function progressLine(levelId: LevelId, stats: { lastScore: Score; prevScore: Score; bestScore: Score }): string | null {
+  const say = (s: NonNullable<Score>) => `${spokenNumber(s.score)} out of ${spokenNumber(s.total)}`;
+  const parts: string[] = [];
+  if (stats.lastScore) parts.push(`last ${say(stats.lastScore)}`);
+  if (stats.prevScore) parts.push(`previous ${say(stats.prevScore)}`);
+  if (stats.bestScore) parts.push(`best ${say(stats.bestScore)}`);
+  return parts.length === 0 ? null : `Level ${spokenNumber(levelId)}: ${parts.join(', ')}.`;
+}

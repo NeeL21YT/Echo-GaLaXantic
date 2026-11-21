@@ -25,7 +25,7 @@ describe('phrases', () => {
     expect(Object.keys(PHRASES.buttons).sort()).toEqual(Object.keys(PHRASES.keys).sort());
   });
   it('mentions contrast only when there is one', () => {
-    expect(PHRASES.touch.feedbackHint(false)).not.toMatch(/compare/);
-    expect(PHRASES.touch.feedbackHint(true)).toMatch(/compare/);
+    expect(PHRASES.touch.feedbackHint(false)).not.toMatch(/contrast/);
+    expect(PHRASES.touch.feedbackHint(true)).toMatch(/contrast/);
   });
 });

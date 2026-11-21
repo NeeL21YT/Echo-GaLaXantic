@@ -5,7 +5,7 @@ import { move } from '../src/engine/collision';
 import * as random from '../src/engine/rng';
 import { corridor, frontWall, lCorridor, room, singleWall, type Gap, type WallSide } from '../src/engine/worlds';
 import { LEVELS } from '../src/levels';
-import { doorExplanation } from '../src/levels/feedback';
+import { doorExplanation, spokenCount } from '../src/levels/feedback';
 import { level1 } from '../src/levels/level1Side';
 import { level2 } from '../src/levels/level2Distance';
 import { level3 } from '../src/levels/level3Door';
@@ -178,8 +178,8 @@ describe('level three', () => {
   it('describes direction from the final heading and rounds to the nearest five degrees', () => {
     const trial = { ...run(level3, 42)[0]!, answer: 0 };
     expect(level3.check(trial, null, { ...trial.start, headingDeg: -42 }, 0).explanation)
-      .toBe('Not quite. The door was 40 degrees to your right. Listen for the side where the room goes quiet.');
-    expect(level3.check(trial, null, { ...trial.start, headingDeg: 43 }, 0).explanation).toContain('45 degrees to your left');
+      .toBe('Not quite. The door was forty degrees to your right. Listen for the side where the room goes quiet.');
+    expect(level3.check(trial, null, { ...trial.start, headingDeg: 43 }, 0).explanation).toContain('forty-five degrees to your left');
     expect(level3.check(trial, null, { ...trial.start, headingDeg: 151 }, 0).explanation).toContain('behind you');
     expect(doorExplanation(0, { ...trial.start, headingDeg: 20 }, false)).toContain('straight ahead');
     const correct = level3.check(trial, null, { ...trial.start, headingDeg: 0 }, 0);
@@ -259,8 +259,8 @@ describe('level five', () => {
     const trial = { ...run(level5, 42)[0]!, meta: { collisions: 100 } };
     const result = level5.check(trial, 'exit', trial.start, elapsed);
     expect(result.correct).toBe(elapsed < 90);
-    expect(result.explanation).toBe(`You escaped in ${Math.floor(elapsed)} seconds.`
-      + (elapsed < 90 ? ' That is under ninety seconds. Passed.' : ' Try to get out in under ninety seconds.'));
+    expect(result.explanation).toBe(`You escaped in ${spokenCount(Math.floor(elapsed), 'second')}.`
+      + (elapsed < 90 ? ' That is under ninety seconds. Passed. You followed the side where the echo opens up.' : ' Try to get out in under ninety seconds.'));
     expect(result.contrast).toBeUndefined();
   });
   it('keeps bump feedback unscored and names the wall and open echo cue', () => {

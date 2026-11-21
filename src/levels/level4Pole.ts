@@ -1,7 +1,7 @@
 import { LEVEL } from '../config';
 import { mulberry32 } from '../engine/rng';
 import { corridor } from '../engine/worlds';
-import { poleBumpExplanation, spokenNumber, trialSeed, withoutWith } from './feedback';
+import { poleBumpExplanation, spokenCount, trialSeed, withoutWith } from './feedback';
 import type { LevelDef } from './types';
 
 export const level4: LevelDef = {
@@ -27,8 +27,8 @@ export const level4: LevelDef = {
     const correct = collisions === 0;
     const count = typeof collisions === 'number' ? collisions : 0;
     return { correct,
-      explanation: correct ? 'You reached the end with no bumps.'
-        : `You reached the end with ${spokenNumber(count)} bump${count === 1 ? '' : 's'}. Listen for the small, short echo of the pole.`,
+      explanation: correct ? 'You reached the end with no bumps. The pole was the short, near echo.'
+        : `You reached the end with ${spokenCount(count, 'bump')}. Listen for the small, short echo of the pole.`,
       contrast: withoutWith(corridor(LEVEL.l4.widthM, LEVEL.l4.lengthM), trial.world) };
   },
 };

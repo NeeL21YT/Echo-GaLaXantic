@@ -32,10 +32,28 @@ export function spokenNumber(value: number): string {
     if (value < small.length) return small[value]!;
     if (value < tens.length * radix) {
       const remainder = value % radix;
-      return `${tens[Math.floor(value / radix)]}${remainder ? ` ${small[remainder]}` : ''}`;
+      return `${tens[Math.floor(value / radix)]}${remainder ? `-${small[remainder]}` : ''}`;
+    }
+    const hundred = radix * radix;
+    if (value < hundred * radix) {
+      const rest = value % hundred;
+      return `${small[Math.floor(value / hundred)]} hundred${rest ? ` ${spokenNumber(rest)}` : ''}`;
     }
   }
   return String(value);
+}
+
+/** Whole numbers and halves as a voice says them: 1.5 is "one and a half", 0.5 is "half a". */
+export function spokenDecimal(value: number): string {
+  if (Number.isInteger(value)) return spokenNumber(value);
+  const whole = Math.floor(value);
+  if (value - whole === LEVEL_FEEDBACK.half) return whole === 0 ? 'half a' : `${spokenNumber(whole)} and a half`;
+  return String(value);
+}
+
+/** A count with its unit, singular for one: "one second", "forty-seven seconds". */
+export function spokenCount(value: number, unit: string): string {
+  return `${spokenNumber(value)} ${unit}${value === 1 ? '' : 's'}`;
 }
 
 export function distanceExplanation(answer: string | number, correct: boolean): string {
@@ -52,7 +70,7 @@ export function doorExplanation(bearing: number, pose: Pose, correct: boolean): 
   const rounded = Math.round(magnitude / LEVEL_FEEDBACK.degreeRoundStep) * LEVEL_FEEDBACK.degreeRoundStep;
   const direction = magnitude <= LEVEL.l3.toleranceDeg ? 'straight ahead'
     : magnitude > LEVEL_FEEDBACK.behindDeg ? 'behind you'
-      : `${rounded} degrees to your ${relative < 0 ? 'left' : 'right'}`;
+      : `${spokenNumber(rounded)} degrees to your ${relative < 0 ? 'left' : 'right'}`;
   return `Not quite. The door was ${direction}. Listen for the side where the room goes quiet.`;
 }
 

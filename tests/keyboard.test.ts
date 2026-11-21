@@ -70,8 +70,8 @@ describe('phase-specific practice shortcuts', () => {
 });
 
 describe('spoken hints', () => {
-  it('names every registered level and the help key in order', () => {
-    expect(levelSelectPrompt()).toBe('Choose a level. Press 1 for Which side, 2 for Near or far, 3 for Find the door, 4 for The pole, 5 for Escape. Press H for help.');
+  it('names the level keys, the other cards and the help key', () => {
+    expect(levelSelectPrompt()).toBe('Press 1 to 5 to start a level. Press Tab to reach lessons and the real room check. Press H for help.');
   });
 
   it.each([

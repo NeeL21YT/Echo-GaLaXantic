@@ -60,6 +60,9 @@ export const levelUp = (): Promise<void> =>
     SFX.levelUp.freqsHz.map((f, i) => ({ freqHz: f, startS: i * SFX.levelUp.noteS, durS: SFX.levelUp.noteS, gain: SFX.gain })),
   );
 
+export const turnTick = (): Promise<void> =>
+  playTones([{ freqHz: SFX.turn.freqHz, startS: 0, durS: SFX.turn.durS, gain: SFX.turn.gain }]);
+
 export const lrTest = (side: 'left' | 'right'): Promise<void> =>
   playTones([{ freqHz: SFX.lrTest.freqHz, startS: 0, durS: SFX.lrTest.durS, gain: SFX.gain }], side === 'left' ? -1 : 1);
 

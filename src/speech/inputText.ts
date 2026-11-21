@@ -17,6 +17,12 @@ export type Phrases = {
   faceDoor: string;
   begin: string;
   levelList: string;
+  /** The level list from anywhere in practice (not just the summary). */
+  levelListAnywhere: string;
+  /** Short next step after every trial's feedback. */
+  nextHint: string;
+  /** Said after a Yes offer, so declining it is as discoverable as accepting. */
+  levelListInstead: string;
   yes: string;
   clickFirst: string;
   feedbackHint: (hasContrast: boolean) => string;
@@ -37,10 +43,13 @@ export const PHRASES: Record<InputStyle, Phrases> = {
     faceDoor: 'Press Enter when you face the door.',
     begin: 'Press Enter to begin.',
     levelList: 'Press Enter for the level list.',
+    levelListInstead: 'Or press Enter for the level list.',
+    levelListAnywhere: 'Press Escape for the level list.',
+    nextHint: 'Press N for next.',
     yes: 'Press Y for yes.',
     clickFirst: 'Click first. Press Space to hear the room.',
-    feedbackHint: (c) => ` Press R to replay${c ? ', C to compare' : ''}, or N for next.`,
-    help: 'Space clicks. R replays. C compares. N goes to the next trial. V shows the observer view. Escape goes to the level list.',
+    feedbackHint: (c) => ` Press R to replay${c ? ', C for contrast' : ''}, or N for next.`,
+    help: 'Space clicks. R replays. C plays the contrast. N goes to the next trial. V shows the observer view. Escape goes to the level list.',
     tone: (side) => `Press ${side} arrow when you hear the tone.`,
     areaLabel: 'Echo practice area. Press H for help.',
     levelPrompt: null,
@@ -54,10 +63,13 @@ export const PHRASES: Record<InputStyle, Phrases> = {
     faceDoor: 'Press and hold when you face the door.',
     begin: 'Press and hold to begin.',
     levelList: 'Press and hold for the level list.',
+    levelListInstead: 'Or tap with three fingers for the level list.',
+    levelListAnywhere: 'Tap with three fingers for the level list.',
+    nextHint: 'Press and hold for next.',
     yes: 'Press and hold for yes.',
     clickFirst: 'Click first. Tap anywhere to hear the room.',
-    feedbackHint: (c) => ` Double tap to replay${c ? ', triple tap to compare' : ''}, or press and hold for next.`,
-    help: 'Tap to click. Double tap to replay. Triple tap to compare. Swipe to answer, turn or walk. Press and hold to continue. Tap with two fingers for help. Tap with three fingers for the level list.',
+    feedbackHint: (c) => ` Double tap to replay${c ? ', triple tap for contrast' : ''}, or press and hold for next.`,
+    help: 'Tap to click. Double tap to replay. Triple tap for contrast. Swipe to answer, turn or walk. Press and hold to continue. Tap with two fingers for help. Tap with three fingers for the level list.',
     tone: (side) => `Press the ${side} button when you hear the tone.`,
     areaLabel: 'Echo practice area. Tap with two fingers for help.',
     levelPrompt:
@@ -69,15 +81,18 @@ export const PHRASES: Record<InputStyle, Phrases> = {
     answerDistance: 'Use the Near and Far buttons to answer.',
     turn: 'Use the Turn left and Turn right buttons.',
     walk: 'Use the Step forward and Step back buttons.',
-    faceDoor: 'Use the Answer button when you face the door.',
+    faceDoor: 'When you face the door, use the Facing the door button.',
     begin: 'Use the Begin button.',
-    levelList: 'Use the Next button for the level list.',
+    levelList: 'Use the Level list button.',
+    levelListInstead: 'Or use the Level list button.',
+    levelListAnywhere: 'Use the Level list button.',
+    nextHint: 'Use the Next button.',
     yes: 'Use the Yes button.',
     clickFirst: 'Click first. Use the Click button to hear the room.',
     feedbackHint: (c) => ` Use the Replay${c ? ', Contrast' : ''} or Next button.`,
-    help: 'Every action is a button: Click, the answers, Replay, Contrast, Next, Help and Levels.',
+    help: 'Every action is a button: Click, the answers, Replay, Contrast, Next, Help and Level list.',
     tone: (side) => `Press the ${side} button when you hear the tone.`,
     areaLabel: 'Echo practice area. Use the Help button.',
-    levelPrompt: 'Choose a lesson or a level. Every card is a button.',
+    levelPrompt: 'Each card is a button. Double tap one to open it.',
   },
 };
