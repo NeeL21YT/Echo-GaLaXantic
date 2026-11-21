@@ -2,6 +2,15 @@
   --bg: #000;
   --fg: #fff;
   --accent: #7cf5ff;
+  --card: #0d0d0d;
+  --card-border: #2a2a2a;
+  --muted: #a8a8a8;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  /* Side gutter: 1.25rem on a phone, and content stays in a readable column on wide screens. */
+  --gutter: max(1.25rem, calc((100% - 64rem) / 2));
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   color: var(--fg);
   background: var(--bg);
@@ -11,9 +20,18 @@
   box-sizing: border-box;
 }
 
+html {
+  /* Android's text size setting reaches the rem sizes below once; the browser must not enlarge text a second time. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Scrolling to a heading or focused control must stop below the sticky Back bar. */
+  scroll-padding-top: calc(var(--safe-top) + 1.75rem + max(56px, 2.5rem));
+}
+
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg);
 }
 
@@ -23,9 +41,12 @@ body {
 
 button {
   min-height: 56px;
-  padding: 0 1.25rem;
+  /* Vertical padding and line-height let a label wrap onto several lines without touching the border. */
+  padding: 0.5rem 1.25rem;
   font: inherit;
   font-size: 1.25rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
   color: var(--fg);
   background: #111;
   border: 1px solid #555;
@@ -57,21 +78,13 @@ button {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  min-width: 14rem;
+  min-width: min(14rem, 100%);
 }
 
-/* Layout: blind view full screen, or a 40/60 split with the observer view (§9.1). dvh keeps the bottom bar above the
-   phone's browser/navigation bars; the safe-area insets keep content clear of notches and gesture bars. */
-:root {
-  --card: #0d0d0d;
-  --card-border: #2a2a2a;
-  --muted: #a8a8a8;
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-left: env(safe-area-inset-left, 0px);
-  --safe-right: env(safe-area-inset-right, 0px);
-}
-
+/* Layout (§9.1). One screen at a time: .practice is the whole screen on a phone. With the observer view on, the two
+   share exactly one screen (never a scrolling page, which a touch user could not reach): side by side 40/60 on tablets
+   and desktop, 60/40 on a landscape phone, the map under the controls on a portrait phone. dvh keeps the bottom clear
+   of the browser bars; the safe-area insets keep content clear of notches and gesture bars on every side. */
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -80,7 +93,25 @@ button {
 }
 
 .layout.split {
-  grid-template-columns: minmax(0, 40%) minmax(0, 60%);
+  grid-template-rows: minmax(0, 1fr) min(42vh, 100vw);
+  grid-template-rows: minmax(0, 1fr) min(42dvh, 100vw);
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+@media (min-width: 700px) and (min-height: 521px) {
+  .layout.split {
+    grid-template-columns: minmax(0, 40%) minmax(0, 60%);
+    grid-template-rows: minmax(0, 1fr);
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .layout.split {
+    grid-template-columns: minmax(0, 60%) minmax(0, 40%);
+    grid-template-rows: minmax(0, 1fr);
+  }
 }
 
 .practice {
@@ -88,10 +119,12 @@ button {
   flex-direction: column;
   min-width: 0;
   max-width: 100%;
-  min-height: 100vh;
-  min-height: 100dvh;
-  padding: var(--safe-top) var(--safe-right) 0 var(--safe-left);
+  height: 100vh;
+  height: 100dvh;
+  padding: 0 var(--safe-right) var(--safe-bottom) var(--safe-left);
   outline: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .practice:focus-visible {
@@ -99,24 +132,70 @@ button {
   outline-offset: -3px;
 }
 
+/* Lists, settings and setup are pages that scroll; the practice screens keep their fixed height instead. */
+.practice:has(.settings),
+.practice:has(.level-select),
+.practice:has(.onboarding) {
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.layout.split .practice,
+.layout.split .practice:has(.settings, .level-select, .onboarding) {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* The black, voice-first view. The message scrolls inside its own region and the buttons stay below it. */
 .blind-view {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   gap: 1.25rem;
-  padding: 1.5rem 1.25rem;
+  min-height: 0;
+  min-width: 0;
+  padding: 1.5rem var(--gutter);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: #000;
   color: #fff;
 }
 
+/* With no Back bar above it, the first thing on screen must clear the status bar. */
+.practice > .blind-view:first-child {
+  padding-top: calc(1.5rem + var(--safe-top));
+}
+
+/* Centring with justify-content would clip the top of a message taller than the area, which could never be scrolled
+   back into view. Auto margins centre it only when there is spare room. */
+.blind-view > :first-child {
+  margin-top: auto;
+}
+
+.blind-view > :last-child {
+  margin-bottom: auto;
+}
+
 .blind-message {
   margin: 0;
-  font-size: 48px;
+  font-size: 3rem;
   line-height: 1.2;
   font-weight: 650;
   letter-spacing: -0.01em;
   overflow-wrap: anywhere;
+}
+
+/* Long passages step the size down (CLAUDE.md decision log): 48px for short lines, smaller for lesson paragraphs. */
+.blind-message[data-length='medium'] {
+  font-size: 2.125rem;
+}
+
+.blind-message[data-length='long'] {
+  font-size: 1.75rem;
+  line-height: 1.3;
 }
 
 /* Status chips: for the sighted person setting the phone up; the same facts are spoken, never visual-only. */
@@ -130,12 +209,14 @@ button {
 }
 
 .chip {
+  max-width: 100%;
   padding: 0.35rem 0.8rem;
   font-size: 1.05rem;
   color: #d8d8d8;
   background: #161616;
   border: 1px solid var(--card-border);
   border-radius: 999px;
+  overflow-wrap: anywhere;
 }
 
 .chip.on {
@@ -152,18 +233,43 @@ button {
   font-weight: 600;
 }
 
-/* Controls: a grid of full-width tap targets, pinned to the bottom of the screen while practising. */
-.controls {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-  gap: 0.6rem;
-  padding: 0.75rem 1.25rem calc(1rem + var(--safe-bottom));
-  background: linear-gradient(to top, #000 78%, rgba(0, 0, 0, 0));
+/* Back button (§13.11): top-left on every screen except the level list. It stays on screen while a long page scrolls,
+   and sits in the flow, so nothing scrolls underneath it. */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  flex: none;
+  padding: calc(0.5rem + var(--safe-top)) var(--gutter) 0.5rem;
+  background: #000;
 }
 
-.practice.gesture-surface .controls {
-  position: sticky;
-  bottom: 0;
+.back {
+  padding: 0.5rem 1.25rem 0.5rem 0.9rem;
+  font-weight: 600;
+}
+
+.back span {
+  font-size: 1.6em;
+  line-height: 1;
+}
+
+/* Controls: a grid of tap targets under the message. They never take more than half the screen; past that they scroll. */
+.controls {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(7.5rem, 100%), 1fr));
+  gap: 0.6rem;
+  max-height: 50vh;
+  max-height: 50dvh;
+  padding: 0.75rem var(--gutter) 1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: #000;
+}
+
+.controls:empty {
+  display: none;
 }
 
 .controls button {
@@ -207,38 +313,87 @@ button:active:not(:disabled) {
   background: #222;
 }
 
-.observer-canvas {
-  display: block;
-  width: 100%;
-  height: 100vh;
+/* Landscape phone: message on the left, buttons on the right, so neither has to give way to the other. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .practice:not(:has(.settings, .level-select, .onboarding)) {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'top ctl'
+      'msg ctl'
+      'mic ctl';
+  }
+
+  .practice:not(:has(.settings, .level-select, .onboarding)) > .topbar {
+    grid-area: top;
+  }
+
+  .practice:not(:has(.settings, .level-select, .onboarding)) > .blind-view {
+    grid-area: msg;
+    padding-right: 1rem;
+  }
+
+  .practice:not(:has(.settings, .level-select, .onboarding)) > .mic-blocked {
+    grid-area: mic;
+  }
+
+  .practice:not(:has(.settings, .level-select, .onboarding)) > .controls {
+    grid-area: ctl;
+    align-content: center;
+    max-height: none;
+    padding: calc(0.75rem + var(--safe-top)) 0 0.75rem;
+  }
+
+  /* Setup: the question on the left, its buttons on the right. */
+  .practice:has(.onboarding) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .practice:has(.onboarding) > .blind-view {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .practice:has(.onboarding) > .onboarding {
+    grid-column: 2;
+    grid-row: 1;
+    justify-content: center;
+    padding-top: calc(0.75rem + var(--safe-top));
+    padding-left: 0;
+  }
+
+  .practice:has(.onboarding) > .controls {
+    display: none;
+  }
 }
 
-.dev-observer {
-  height: 60vh;
-  border: 1px solid #333;
+/* Level list and setup: one card per choice, in as many columns as fit. */
+.level-select {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  align-items: stretch;
+  gap: 0.6rem;
+  padding: 0 var(--gutter) 1rem;
 }
 
-.dev-observer .observer-canvas {
-  height: 100%;
+.level-select > h2 {
+  grid-column: 1 / -1;
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-
-/* Level list and onboarding: full-width cards, one per choice. */
-.level-select,
 .onboarding {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 0.6rem;
-  padding: 0 1.25rem 1rem;
+  padding: 0 var(--gutter) 1rem;
+}
+
+.onboarding p {
+  margin: 0;
+  font-size: 1.25rem;
+  overflow-wrap: anywhere;
 }
 
 .level-select h2,
@@ -254,7 +409,7 @@ button:active:not(:disabled) {
 
 .card {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 0.15rem 0.75rem;
   width: 100%;
@@ -280,13 +435,14 @@ button:active:not(:disabled) {
 .badge {
   grid-column: 2;
   grid-row: 1 / span 2;
+  max-width: 7rem;
   padding: 0.2rem 0.7rem;
   font-size: 0.9rem;
   font-weight: 600;
   color: #04282c;
   background: var(--accent);
   border-radius: 999px;
-  white-space: nowrap;
+  text-align: center;
 }
 
 .badge.quiet {
@@ -296,30 +452,79 @@ button:active:not(:disabled) {
   font-weight: 500;
 }
 
+/* On the level list the message is a heading, not the whole screen, so the choices start higher up. */
+.practice:has(.level-select) > .blind-view {
+  flex: none;
+  padding-bottom: 0.5rem;
+  overflow: visible;
+}
+
+/* Setup's first screen: one big button over everything, its label clear of the notch and bars. */
 .start-button {
   position: fixed;
-  z-index: 1;
+  z-index: 4;
   inset: 0;
+  display: grid;
+  place-items: center;
   width: 100%;
   min-height: 100vh;
+  min-height: 100dvh;
+  padding: calc(1rem + var(--safe-top)) calc(1rem + var(--safe-right)) calc(1rem + var(--safe-bottom)) calc(1rem + var(--safe-left));
   border-radius: 0;
-  font-size: 48px;
+  font-size: 3rem;
+  overflow-y: auto;
 }
 
 .start-button:focus-visible {
   outline-offset: -3px;
 }
 
+/* Observer view: a square map that fills its panel without stretching. */
 .observer-panel {
   position: relative;
-  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) 0;
+  overflow: hidden;
   border-left: 1px solid #222;
+}
+
+.observer-canvas {
+  display: block;
+  width: min(100%, 100vh);
+  width: min(100%, 100dvh);
+  max-height: 100%;
+  aspect-ratio: 1;
 }
 
 .observer-panel .reveal {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
+  top: calc(1rem + var(--safe-top));
+  right: calc(1rem + var(--safe-right));
+  max-width: calc(100% - 2rem);
+}
+
+.dev-observer {
+  height: 60vh;
+  border: 1px solid #333;
+}
+
+.dev-observer .observer-canvas {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  aspect-ratio: auto;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .settings,
@@ -327,7 +532,8 @@ button:active:not(:disabled) {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  padding: 0.5rem 1.25rem 1rem;
+  min-width: 0;
+  padding: 0.75rem var(--gutter) 1rem;
   font-size: 1.15rem;
 }
 
@@ -336,6 +542,7 @@ button:active:not(:disabled) {
   padding: 0;
   list-style: none;
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
   gap: 0.5rem;
 }
 
@@ -346,21 +553,12 @@ button:active:not(:disabled) {
   background: var(--card);
   border: 1px solid var(--card-border);
   border-radius: 14px;
-}
-
-.settings,
-.progress-panel {
-  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .settings p,
 .settings label {
   overflow-wrap: anywhere;
-}
-
-.settings h2 {
-  /* Scrolling to the heading must stop below the Back button. */
-  scroll-margin-top: 5rem;
 }
 
 .settings label {
@@ -394,32 +592,42 @@ button:active:not(:disabled) {
   align-items: center;
 }
 
-/* Gestures (§13.2): while practising, swipes and taps belong to Echo, so the page must not scroll or select text. */
-.practice.gesture-surface {
+/* Shown only when Android refused the microphone: a real button to the phone's settings page. */
+.mic-blocked {
+  flex: none;
+  padding: 0.75rem var(--gutter) 0;
+}
+
+.mic-blocked button {
+  width: 100%;
+}
+
+/* Gestures (§13.2): while practising, swipes and taps belong to Echo, so the page must not scroll or select text.
+   A scroll container takes the pan itself unless it says none (touch-action does not cross a scroll container), so
+   the message area and the buttons carry it too. The setup screens swipe as well. */
+.practice.gesture-surface,
+.practice.gesture-surface .blind-view,
+.practice.gesture-surface .controls,
+.practice:has(.onboarding) .blind-view {
   touch-action: none;
+}
+
+.practice.gesture-surface {
   user-select: none;
   -webkit-user-select: none;
 }
 
-/* Phones (§13): stack the observer view under the blind view instead of splitting the screen. */
-@media (max-width: 700px) {
-  .layout.split {
-    grid-template-columns: 1fr;
-  }
+/* A message taller than its area scrolls by touch; vertical swipes there scroll instead of acting. */
+.practice.gesture-surface .blind-view[data-scroll='true'] {
+  touch-action: pan-y;
 }
 
-/* On the level list the message is a heading, not the whole screen, so the choices start higher up. */
-.practice:has(.level-select) .blind-view {
-  flex: none;
-  padding-bottom: 0.5rem;
+/* Only when the buttons themselves overflow (huge text on a small screen): they would be unreachable otherwise. */
+.practice.gesture-surface .controls[data-scroll='true'] {
+  touch-action: pan-y;
 }
 
 /* Touch-and-hold to hear (§13.8): without these, Android's own long-press (text selection, callout) fights ours. */
-.practice {
-  -webkit-touch-callout: none;
-  -webkit-tap-highlight-color: transparent;
-}
-
 .practice button,
 .practice .chip,
 .practice .blind-message,
@@ -433,107 +641,4 @@ button:active:not(:disabled) {
   outline: 4px solid var(--accent);
   outline-offset: 2px;
   background: #10242a;
-}
-
-/* Back button (§13.11): always top-left on every screen except the level list, so a sighted helper can find it too. */
-.topbar {
-  padding: 0.75rem 1.25rem 0;
-}
-
-.back {
-  min-height: 56px;
-  padding: 0 1.25rem 0 0.9rem;
-  font-weight: 600;
-}
-
-.back span {
-  font-size: 1.6em;
-  line-height: 1;
-}
-
-/* Long passages step the size down (CLAUDE.md decision log): 48px for short lines, smaller for lesson paragraphs. */
-.blind-message[data-length='medium'] {
-  font-size: 34px;
-}
-
-.blind-message[data-length='long'] {
-  font-size: 28px;
-  line-height: 1.3;
-}
-
-/* The message scrolls inside its own area, and the buttons stay below it instead of covering it. */
-.practice {
-  height: 100vh;
-  height: 100dvh;
-}
-
-.blind-view {
-  min-height: 0;
-  min-width: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  /* Centring with justify-content would clip the top of a message taller than the area (landscape), where it can
-     never be scrolled back into view. Auto margins centre it only when there is spare room. */
-  justify-content: flex-start;
-}
-
-.blind-view > :first-child {
-  margin-top: auto;
-}
-
-.blind-view > :last-child {
-  margin-bottom: auto;
-}
-
-/* Settings and the progress list scroll with the page, so the fixed practice height must not squeeze them. */
-.practice:has(.settings) {
-  height: auto;
-  min-height: 100dvh;
-}
-
-.settings {
-  padding-top: 0.75rem;
-}
-
-/* Touch must reach our gesture code: a scroll container takes the pan itself unless it says none (touch-action does not
-   cross a scroll container), so the blind view carries it too. The setup screens swipe as well. */
-.practice.gesture-surface .blind-view,
-.practice:has(.onboarding) .blind-view {
-  touch-action: none;
-}
-
-.practice:has(.level-select) {
-  height: auto;
-  min-height: 100dvh;
-}
-
-.practice:has(.level-select) .blind-view {
-  overflow: visible;
-}
-
-.practice.gesture-surface .controls {
-  position: static;
-}
-
-/* Two columns of buttons even on a narrow phone, so the controls take less of the screen. */
-.controls {
-  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
-}
-
-/* Shown only when Android refused the microphone: a real button to the phone's settings page. */
-.mic-blocked {
-  padding: 0.75rem 1.25rem 0;
-}
-
-.mic-blocked button {
-  width: 100%;
-}
-
-.progress-panel {
-  padding-bottom: calc(1rem + var(--safe-bottom));
-}
-
-/* A message taller than its area scrolls by touch; vertical swipes there scroll instead of acting. */
-.practice.gesture-surface .blind-view[data-scroll='true'] {
-  touch-action: pan-y;
 }
