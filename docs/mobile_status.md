@@ -4,10 +4,14 @@ Branch: `mobile`. Last updated: 22 November 2026.
 Test phone: Redmi Note 10 (M2101K7BI), Android 13. App: debug APK built from this branch.
 Checks: `npm run build` has 0 TypeScript errors. `npm test` passes 382 tests in 27 files.
 
-This file has three parts:
+This file has seven parts:
 1. What was fixed.
 2. What still needs a person to check on a real phone.
 3. What is known and not fixed.
+4. What to pick up next session.
+5. How to build, install and test the Android app.
+6. How the phone was tested, and what that method could not cover.
+7. The commits for this work.
 
 Design changes are also logged, one line each, in the Decisions log in `CLAUDE.md`.
 
@@ -207,3 +211,83 @@ None of these stop the app being used. They are listed so nothing is hidden.
    - Swipes still answer in Levels 1 and 2.
 3. **Do the person checks in section 2:** hardware Back, volume keys, multi-finger taps, TalkBack, sound, real room, Level 5, the speed-up offer and "Previously…".
 4. **Decide whether to update `build_spec.md`** so it matches the code: `RENDER_VERSION`, `fftSize`, the newer `config.ts` groups, and the §13.8 deviation.
+
+---
+
+## 5. Build, install and test setup (Windows)
+
+This is the set-up used on the team's Windows PC.
+- **Android SDK:** command-line tools only, no Android Studio, in `C:\Android\Sdk`. Packages installed:
+  - `platform-tools`, which includes `adb`.
+  - `platforms;android-36`.
+  - `build-tools;36.0.0`.
+
+  The SDK licences were accepted with `sdkmanager --licenses`.
+- **Java:** JDK 21 at `C:\Program Files\Java\jdk-21`.
+  - The system `JAVA_HOME` was wrongly set to `...\jdk-21\bin`, which breaks `sdkmanager` and Gradle.
+  - Either fix it in Windows environment variables, or set it per shell: `$env:JAVA_HOME="C:\Program Files\Java\jdk-21"`.
+- **SDK location:** `android/local.properties` (git-ignored) contains `sdk.dir=C:/Android/Sdk`. Use forward slashes; a Windows path with unescaped backslashes breaks Gradle with "The filename, directory name, or volume label syntax is incorrect".
+- **Build the debug APK** (PowerShell, from the repo root):
+
+  ```
+  npm ci
+  npm run build
+  npm test
+  npx cap sync android
+  cd android; .\gradlew.bat assembleDebug
+  ```
+
+  The APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`.
+- **Install on a phone:**
+  1. Turn on Developer options and USB debugging.
+  2. Set the USB mode to File transfer.
+  3. Accept "Allow USB debugging".
+  4. Run `C:\Android\Sdk\platform-tools\adb.exe install -r android\app\build\outputs\apk\debug\app-debug.apk`.
+
+  You can also copy the APK to the phone and open it there.
+- **Line endings:** `npx cap sync` rewrites the line endings of `android/app/capacitor.build.gradle` and `android/capacitor.settings.gradle`. These are line-ending changes only; discard them with `git checkout -- <file>` before committing.
+
+---
+
+## 6. How the phone was tested
+
+- **Phone and rounds:** three on-device test rounds ran on the Redmi Note 10 (Android 13, 1080×2400, 392 CSS px wide).
+- **How the app was driven:** through the debug WebView's DevTools protocol, with `adb forward tcp:9222 localabstract:webview_devtools_remote_<pid>` and a small Node script.
+  - The script sent touch and key events into the page.
+  - It read the on-screen message, the buttons and the live region.
+  - It recorded every line passed to the native speech engine.
+  - It logged console errors.
+  - It took screenshots with `adb exec-out screencap`.
+  - It checked microphone use with `dumpsys audio`.
+- **Limits:** this phone runs MIUI, which refuses `adb shell input` (tap, swipe, key events), `pm clear` and `settings put`. Because of that, these could not be tested automatically:
+  - Hardware Back, the volume keys and Home.
+  - Real finger touches, as opposed to events sent into the page.
+  - Two- and three-finger taps.
+  - TalkBack.
+  - Sound, because the tests cannot hear.
+
+  These are the checks listed in section 2.
+- **adb-mcp plugin:** it was installed, but its server failed to connect ("Connection closed"), so plain `adb` was used instead.
+- **Responsive layout:** measured in a headless Chromium browser (Brave) against `vite preview`, using the DevTools device-size emulation at each screen size. The measuring script was a throwaway local file and is not in the repo.
+- **Automated tests:** they grew from 283 to 382, in 27 files. The new tests include:
+  - Full flow runs of Levels 1 to 5 (`tests/journey-levels.test.ts`).
+  - Setup, lessons and the real room (`tests/journey-setup*.test.ts`, `tests/coachMicOff.test.ts`).
+  - Saved data (`tests/progress.test.ts`).
+  - Wording (`tests/wording-levels.test.ts`).
+  - Narration timeouts (`tests/narrator.test.ts`).
+  - Gestures and volume keys.
+
+---
+
+## 7. Commits for this work (branch `mobile`)
+
+| Commit | What |
+|---|---|
+| `2e49906` seg22 | Android hardening: speech always ends, mic permission, volume keys, Back, vibration across API levels |
+| `9182d06` seg23 | Saved-data validation, storage caps, confirmed Reset and Redo setup, spoken Settings changes |
+| `1bbc5ac` seg24 | Setup, lessons and real room: mic released on leave, wording per input style, Lesson 6 practice link |
+| `182560b` seg25 | Level runs: contrast from the answered direction, next step after every trial, no overlapping sound, numbers as words |
+| `f7d9189` seg26 | Touch and keys: swipes no longer cancelled, long press on the message acts, volume-key guards, phone layout fits |
+| `ffeab9f` seg27 | Docs: this status file and the Decisions log |
+| `f3ae219` seg28 | Responsive layout for phone sizes and large text (landscape, tablet and desktop still to measure) |
+| `f31f861` seg29 | Docs: responsive status, remaining unfixed items, next-session plan |
