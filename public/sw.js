@@ -3,7 +3,16 @@
 const CACHE = 'echo-v1';
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(['/', '/index.html'])));
+  // Also cache the hashed JS/CSS the shell references, so going offline right after the first load works
+  // (those files were fetched before this worker controlled the page and would otherwise not be cached).
+  event.waitUntil(
+    caches.open(CACHE).then(async (cache) => {
+      await cache.addAll(['/', '/index.html']);
+      const html = await (await cache.match('/index.html')).text();
+      const assets = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1]);
+      await cache.addAll(assets);
+    }),
+  );
   self.skipWaiting();
 });
 
