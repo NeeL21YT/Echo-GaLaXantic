@@ -10,6 +10,9 @@ interface EchoNativePlugin {
   speak(options: { id: number; text: string; rate: number }): Promise<void>;
   stopSpeaking(): Promise<void>;
   exitApp(): Promise<void>;
+  checkMicPermission(): Promise<{ granted: boolean }>;
+  requestMicPermission(): Promise<{ granted: boolean }>;
+  openAppSettings(): Promise<void>;
   addListener(event: 'screenReaderChanged', fn: (data: { on: boolean }) => void): Promise<PluginListenerHandle>;
   addListener(event: 'speechEnd', fn: (data: { id: number }) => void): Promise<PluginListenerHandle>;
   addListener(event: 'backPressed', fn: () => void): Promise<PluginListenerHandle>;
@@ -88,9 +91,12 @@ let speechListening = false;
 function listenForSpeechEnd(): void {
   if (speechListening) return;
   speechListening = true;
-  void Native.addListener('speechEnd', (d) => {
+  Native.addListener('speechEnd', (d) => {
     speechWaiting.get(d.id)?.();
     speechWaiting.delete(d.id);
+  }).catch(() => {
+    // Allow the next speak to try again; waiting speech is released by nativeStopSpeaking.
+    speechListening = false;
   });
 }
 
@@ -132,5 +138,36 @@ export async function exitApp(): Promise<void> {
     await Native.exitApp();
   } catch {
     // Nothing to close.
+  }
+}
+
+// ---------- microphone ----------
+
+/** Asks Android for the microphone before getUserMedia. True when granted; on the web the browser asks later, so true. */
+export async function requestMicPermission(): Promise<boolean> {
+  if (!isNative()) return true;
+  try {
+    return (await Native.requestMicPermission()).granted;
+  } catch {
+    return false;
+  }
+}
+
+export async function micPermissionGranted(): Promise<boolean> {
+  if (!isNative()) return true;
+  try {
+    return (await Native.checkMicPermission()).granted;
+  } catch {
+    return false;
+  }
+}
+
+/** After "don't ask again" only the app's settings page can grant the microphone. */
+export async function openAppSettings(): Promise<void> {
+  if (!isNative()) return;
+  try {
+    await Native.openAppSettings();
+  } catch {
+    // Nothing more can be done.
   }
 }
