@@ -10,6 +10,7 @@ import { cancel as cancelSpeech, initNarrator } from './speech/narrator';
 import { saveSettings } from './state/progress';
 import { Announcer } from './speech/Announcer';
 import { lessonAction, lessonActions } from './state/lessonRunner';
+import { roomAction, roomActions } from './state/roomRunner';
 import { dispatch, validActions } from './state/runner';
 import { useEcho, type Action } from './state/store';
 import { BlindView } from './ui/BlindView';
@@ -32,7 +33,15 @@ function useActionLabels(): Partial<Record<Action, string>> {
   if (phase === 'ready') return { answer: 'Facing the door' };
   if (phase === 'summary') return { next: 'Level list' };
   if (phase === 'lesson') return { next: 'Continue', replay: 'Hear again', answer: 'Practise this skill' };
+  if (phase === 'realRoom') return { far: 'Farther', near: 'Closer', answer: 'Lock in my guess', replay: 'Tell me the distance', next: 'Try again', click: 'Click (ping)' };
   return {};
+}
+
+/** The actions valid right now, whichever flow owns the screen. */
+function currentActions(phase: string): Action[] {
+  if (phase === 'lesson') return lessonActions();
+  if (phase === 'realRoom') return roomActions();
+  return validActions();
 }
 
 export function App() {
@@ -52,6 +61,7 @@ export function App() {
   useEcho((s) => s.lastResult);
   useEcho((s) => s.stretchOffer);
   useEcho((s) => s.lessonPage);
+  useEcho((s) => s.roomStep);
   const labels = useActionLabels();
 
   const onAction = (a: Action): boolean => {
@@ -60,6 +70,7 @@ export function App() {
       return true;
     }
     if (phase === 'lesson') return lessonAction(a);
+    if (phase === 'realRoom') return roomAction(a);
     return dispatch(a);
   };
   const onActionRef = useRef(onAction);
@@ -94,7 +105,7 @@ export function App() {
   useEffect(() => {
     const el = practiceRef.current;
     if (!el || screenReaderOn) return;
-    const valid = () => (useEcho.getState().phase === 'lesson' ? lessonActions() : validActions());
+    const valid = () => currentActions(useEcho.getState().phase);
     return attachGestures(el, (a) => onActionRef.current(a), valid, () => void vibrate([GESTURE.tickMs]));
   }, [screenReaderOn]);
 
@@ -105,7 +116,7 @@ export function App() {
     if (!capture) return;
     return onVolumeKey((key) => {
       const st = useEcho.getState();
-      const valid = st.phase === 'lesson' ? lessonActions() : validActions();
+      const valid = currentActions(st.phase);
       const action = actionForVolumeKey(key, valid, st.phase === 'ready');
       if (action) onActionRef.current(action);
     });
@@ -157,7 +168,7 @@ export function App() {
 
   if (isDevAudio) return <DevAudio />;
 
-  const baseActions = phase === 'lesson' ? lessonActions() : validActions();
+  const baseActions = currentActions(phase);
   const actions = phase === 'onboarding' ? [] : [...baseActions, 'settings' as const];
   const answerActions: Action[] = ['left', 'right', 'near', 'far', 'answer'];
   const disabled = phase === 'ready' && clicks < 1 ? answerActions : [];

@@ -3,9 +3,9 @@
 import { RANGING, SPEED_OF_SOUND } from '../config';
 
 /** Linear sweep with a Hann window, so its correlation sidelobes stay low. */
-export function makeChirp(sampleRate: number): Float32Array {
+export function makeChirp(sampleRate: number): Float32Array<ArrayBuffer> {
   const n = Math.round(RANGING.chirpDurationS * sampleRate);
-  const out = new Float32Array(n);
+  const out = new Float32Array(new ArrayBuffer(n * Float32Array.BYTES_PER_ELEMENT));
   const { chirpStartHz: f0, chirpEndHz: f1, chirpDurationS: T, chirpGain } = RANGING;
   for (let i = 0; i < n; i++) {
     const t = i / sampleRate;

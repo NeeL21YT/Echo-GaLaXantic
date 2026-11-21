@@ -2,6 +2,7 @@ import { LESSONS } from '../levels/lessons';
 import { LEVELS } from '../levels';
 import { getLessonsDone, levelStats } from '../state/progress';
 import { startLesson } from '../state/lessonRunner';
+import { startRoom } from '../state/roomRunner';
 import { startLevel } from '../state/runner';
 import { useEcho } from '../state/store';
 
@@ -18,6 +19,12 @@ export function LevelSelect() {
             {done.includes(lesson.id) ? ' · Done' : ''}
           </button>
         ))}
+      </nav>
+      <nav className="level-select" aria-label="Real room">
+        <h2>Real room</h2>
+        <button type="button" onClick={() => startRoom()}>
+          Real room check — guess the distance, then hear the real one
+        </button>
       </nav>
       <nav className="level-select" aria-label="Levels">
         <h2>Practise</h2>

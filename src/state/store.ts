@@ -5,7 +5,7 @@ import { isOnboarded, loadSettings } from './progress';
 import type { AnswerResult, LevelDef, Trial } from '../levels/types';
 import type { EchoVoice, Hit, Pose } from '../types';
 
-export type Phase = 'onboarding' | 'levelSelect' | 'lesson' | 'intro' | 'ready' | 'answered' | 'feedback' | 'summary';
+export type Phase = 'onboarding' | 'levelSelect' | 'lesson' | 'realRoom' | 'intro' | 'ready' | 'answered' | 'feedback' | 'summary';
 export type Narration = 'voice' | 'screenreader';
 export type ClickSource = 'key' | 'mic';
 export type LevelId = LevelDef['id'];
@@ -49,6 +49,8 @@ export type EchoState = {
   /** Teaching track (§13.7): the open lesson and which page of it. */
   lessonId: number | null;
   lessonPage: number;
+  /** Bumped whenever the real-room check changes sub-state, so its buttons re-render. */
+  roomStep: number;
   runId: string | null;
   trialIndex: number;
   /** Trials in the current run (from the level definition). */
@@ -102,6 +104,7 @@ export const useEcho = create<EchoState>()((set) => ({
   levelId: null,
   lessonId: null,
   lessonPage: 0,
+  roomStep: 0,
   runId: null,
   trialIndex: 0,
   trialCount: 0,
