@@ -59,3 +59,84 @@ button {
   gap: 0.25rem;
   min-width: 14rem;
 }
+
+/* Layout: blind view full screen, or a 40/60 split with the observer view (§9.1). */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 100vh;
+}
+
+.layout.split {
+  grid-template-columns: 40% 60%;
+}
+
+.practice {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  outline: none;
+}
+
+.practice:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.blind-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2rem;
+  background: #000;
+  color: #fff;
+}
+
+.blind-message {
+  margin: 0;
+  font-size: 48px;
+  line-height: 1.25;
+  font-weight: 600;
+}
+
+.blind-status {
+  margin: 1.5rem 0 0;
+  font-size: 1.5rem;
+  color: #ccc;
+}
+
+.mic-on {
+  color: var(--accent);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 1rem 2rem 2rem;
+}
+
+.key-hint {
+  color: #aaa;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.observer-canvas {
+  display: block;
+  width: 100%;
+  height: 100vh;
+}
+
+.dev-observer {
+  height: 60vh;
+  border: 1px solid #333;
+}
+
+.dev-observer .observer-canvas {
+  height: 100%;
+}

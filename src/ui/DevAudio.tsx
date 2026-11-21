@@ -10,18 +10,18 @@ import { castRays } from '../engine/raycaster';
 import { room } from '../engine/worlds';
 import { turn } from '../engine/collision';
 import type { EchoVoice, Hit, Pose } from '../types';
-
-type Props = { onHits?: (hits: Hit[], pose: Pose) => void };
+import { ObserverView } from './ObserverView';
 
 const ROOM_TEST = room(6, 6, [{ wall: 'N', center: 0, width: 1 }]);
 
-export function DevAudio({ onHits }: Props) {
+export function DevAudio() {
   const [d, setD] = useState(1);
   const [az, setAz] = useState(-90);
   const [stretch, setStretch] = useState(DEFAULT_STRETCH);
   const [includeDirect, setIncludeDirect] = useState(true);
   const [pose, setPose] = useState<Pose>({ p: { x: 0, y: 0 }, headingDeg: 0 });
   const [status, setStatus] = useState('Press a button. Wear headphones.');
+  const [shot, setShot] = useState<{ hits: Hit[]; pose: Pose | null; id: number }>({ hits: [], pose: null, id: 0 });
 
   async function renderAndPlay(voices: EchoVoice[], label: string) {
     try {
@@ -39,7 +39,7 @@ export function DevAudio({ onHits }: Props) {
 
   const playRoom = () => {
     const hits = castRays(ROOM_TEST, pose);
-    onHits?.(hits, pose);
+    setShot((s) => ({ hits, pose, id: s.id + 1 }));
     return renderAndPlay(buildEchoes(hits, stretch), `Room test heading ${pose.headingDeg}° (${hits.length}/72 rays hit)`);
   };
 
@@ -87,6 +87,9 @@ export function DevAudio({ onHits }: Props) {
           Room test (heading {pose.headingDeg}°)
         </button>
       </fieldset>
+      <div className="dev-observer">
+        <ObserverView world={ROOM_TEST} pose={pose} hits={shot.hits} rayPose={shot.pose} shotId={shot.id} />
+      </div>
 
       <fieldset>
         <legend>Sound effects</legend>

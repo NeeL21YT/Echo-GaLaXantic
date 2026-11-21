@@ -1,7 +1,6 @@
 import { CLICK, SAMPLE_RATE } from '../config';
 import { mulberry32 } from '../engine/rng';
 
-
 let cached: AudioBuffer | null = null;
 
 /** The raw click samples (§6.2): decaying 3.2 kHz sinusoid + white noise, Hann-windowed, peak-normalised. */

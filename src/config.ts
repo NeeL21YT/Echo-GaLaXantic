@@ -73,3 +73,17 @@ export const SFX = {
   fadeS: 0.005,
   silenceGain: 0.0001,
 };
+
+// Observer view (§9.1).
+export const OBSERVER = {
+  pxPerM: 60,
+  rayAnimMs: 400,
+  wallPx: 4,
+  playerSizeM: 0.35,
+  hitDotPx: 4,
+  // Escaped rays stay faint so the doorway gap reads as "nothing came back".
+  escapedAlpha: 0.12,
+  hitRayAlpha: 0.35,
+  minHitAlpha: 0.15,
+  marginPx: 24,
+};
