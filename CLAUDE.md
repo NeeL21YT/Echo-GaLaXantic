@@ -15,7 +15,7 @@ If a request conflicts with `build_spec.md`, stop and say so. Do not silently pi
 - Zustand for state; Vitest for tests
 - Deploy: Vercel, static
 
-**Do not add dependencies** beyond `react`, `react-dom`, `zustand`, `vitest`, `@vitejs/plugin-react` and `typescript`. If you believe one is needed, ask first and give the reason. This rules out Three.js, Tone.js, Howler, UI kits, CSS frameworks, chart libraries, analytics and web fonts.
+**Do not add dependencies** beyond `react`, `react-dom`, `zustand`, `vitest`, `@vitejs/plugin-react` and `typescript`. On the `mobile` branch only, `@capacitor/core`, `@capacitor/cli` and `@capacitor/android` are also allowed (build_spec §13). If you believe one is needed, ask first and give the reason. This rules out Three.js, Tone.js, Howler, UI kits, CSS frameworks, chart libraries, analytics and web fonts.
 
 ## Code rules
 - **All numbers live in `src/config.ts`.** No magic numbers in engine, audio or level code. If you need a new constant, add it to `config.ts` with a comment.
@@ -76,7 +76,7 @@ If a request conflicts with `build_spec.md`, stop and say so. Do not silently pi
 - Commit messages: `seg<N>: <what>`, e.g. `seg2: ray caster with gap test`.
 
 ## Out of scope — refuse and point to the spec
-3D geometry, noise ladder, material recognition, a personalised recorded-click waveform, adaptive threshold estimation, accounts, backends, ML, mobile layout, head-tracking, floor-plan import, analytics.
+3D geometry, noise ladder, material recognition, a personalised recorded-click waveform, adaptive threshold estimation, accounts, backends, ML, head-tracking, floor-plan import, analytics, camera or depth-sensor ranging. (Mobile layout and the Android app are in scope on the `mobile` branch, see build_spec §13.)
 
 ## Feature freeze
 After hour 29 (see `build_spec.md` §11, Segment 7), only fix bugs. Decline new features and say "feature freeze".
@@ -103,3 +103,4 @@ Append one line per change: `YYYY-MM-DD HH:MM — what changed — why — RENDE
 - 2026-11-21 21:40 — Progress: run summaries stored in `echo.runs.v1` next to the trial log; every session starts on the Space key (the mic needs a fresh permission grant) — score history and pass streaks without rebuilding runs from trials — RENDER_VERSION 2
 - 2026-11-21 21:40 — Screen-reader mode contrast: each label is announced, then a fixed 1.5 s gap before its sound — `speechSynthesis` can't observe when NVDA finishes — RENDER_VERSION 2
 - 2026-11-21 21:50 — Stimulus: fixed `STIMULUS_GAIN` 0.18 on one GainNode before the offline destination (direct click and echoes alike; no per-scene normalising, formulas and MASTER_GAIN unchanged) — coherent echo sums near corners broke the §10.2 clip limit: worst peak over all reachable poses was L3 2.15, L4/L5 4.67 (L1 0.400, L2 0.642); now L1 0.072, L2 0.116, L3 0.387, L4/L5 0.840; output is about 15 dB quieter at normal poses, so players may need the volume control — RENDER_VERSION 3
+- 2026-11-21 — `mobile` branch opened: Android APK via Capacitor, touch gestures, volume keys, Morse feedback, TalkBack detection, speaker-chirp ranging. Spec §1 "desktop only", the mobile/dependency bans and the hour-29 freeze are lifted for this branch only; `main` (the deployed hackathon build) is untouched — owner chose "branch + amend spec", Capacitor, and chirp ranging over camera depth — RENDER_VERSION 3

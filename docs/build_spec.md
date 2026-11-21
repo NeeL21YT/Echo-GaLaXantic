@@ -16,7 +16,7 @@ Echo is a browser-based echolocation practice space. The player wears headphones
 
 | Constraint | Value |
 |---|---|
-| Platform | Desktop browser. Chrome is primary; Firefox is secondary. Mobile is not supported in the MVP. |
+| Platform | Desktop browser. Chrome is primary; Firefox is secondary. Android (Capacitor APK) is added on the `mobile` branch only — see §13. `main` stays desktop-only. |
 | Output | Headphones (wired is the tested setup) |
 | Stack | React 18, Vite, TypeScript (strict), Web Audio API, Canvas 2D, Web Speech API, Zustand, Vitest |
 | Backend | None. Static deploy on Vercel. |
@@ -513,3 +513,38 @@ Owners: **A** Audio engineer · **B** Geometry and levels · **C** Visuals and U
 - [ ] Unit tests pass (`npm test`). `npm run build` has 0 TS errors.
 - [ ] No console errors during a full run. No clip warnings.
 - [ ] README, idea_and_strategy and the demo video are done.
+
+---
+
+## 13. Mobile (Android) — `mobile` branch only
+
+Lifts the "no mobile" and dependency bans for this branch. `main` is the frozen hackathon build.
+
+**Principle: teach, don't replace.** Echo trains the ear. Nothing on the phone should become a crutch, so every aid is guess-first and fades with skill.
+
+### 13.1 Packaging
+- Capacitor wraps the Vite build (`dist/`) as an Android app. Allowed new packages: `@capacitor/core`, `@capacitor/cli`, `@capacitor/android`. No other plugins; native code is a small in-repo Java plugin (`android/app/src/main/java/.../EchoNativePlugin.java`).
+- The web build must keep working unchanged in a browser. Native-only features sit behind `src/native/` and no-op on the web.
+
+### 13.2 Touch gestures (`input/gestures.ts`)
+Active only when no screen reader is on. TalkBack takes over raw touch, and the real buttons stay the way in.
+- 1 tap: Click · 2 taps: Replay · 3 taps: Contrast
+- Swipe left / right: Left / Right, or Turn left / Turn right where those are valid
+- Swipe up / down: Far / Near, or Step forward / Step back where those are valid
+- Long press: Answer / Next · Two-finger tap: Help · Three-finger tap: Level list
+- A single tap fires at once when no multi-tap action is valid, so Click has no delay.
+- Every recognised gesture gives a 20 ms vibration tick, so the user knows it registered.
+
+### 13.3 Volume keys
+Native only. Volume up: Click · Volume down: Replay (or Next in feedback). A Settings switch gives the keys back to the system volume. Default: keys act as actions when no screen reader is on, system volume when one is.
+
+### 13.4 Morse feedback (`speech/morse.ts`, `audio/morsePlayer.ts`)
+Settings `Morse`: off · vibration · sound. It is added to the narration, never a replacement, and never plays over a stimulus or speech. Codes: pass `OK`, miss `TRY`, bump `B`, level start the level digit. Unit 120 ms; dash 3, gap 1, letter gap 3, word gap 7.
+
+### 13.5 Screen reader (`native/screenReader.ts`)
+Native: TalkBack touch-exploration state is read on launch, on resume and on change. On → narration `screenreader`, our speech is cancelled and not used; the user's choice is kept and restored when it goes off. Web: the onboarding question stays.
+
+### 13.6 Real-room ranging (`engine/ranging.ts`, `audio/ranger.ts`)
+Replaces camera depth (a camera sees nothing in the dark and depth needs ARCore/ML). The phone plays a 4 ms linear chirp and records with echo-cancel, noise-suppress and AGC off. A matched filter finds the direct path and the first echo; distance = 343 × Δt / 2. Five pings, median. Works in total darkness. Estimate range 0.3–5 m, accuracy about ±0.15 m on a quiet room; this is a practice aid, not a navigation aid.
+- Flow: the user pings, **guesses first** (Far/Near = ±0.5 m, Answer to confirm), then Echo reveals the measured distance and the difference.
+- Fade: after three guesses in a row within 0.5 m, Echo says only "Close" or "Off" unless Replay is pressed.
