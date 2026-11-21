@@ -1,5 +1,8 @@
 // What the real-room check says (§13.6). Pure so the wording and the fade rule can be tested.
-import { RANGING } from '../config';
+import { HEADING, RANGING } from '../config';
+import {
+  directionsMeasured, nearestReading, signedTurn, type DirectedRange,
+} from '../engine/roomDirection';
 import type { InputStyle } from './inputText';
 
 const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
@@ -79,6 +82,57 @@ export function revealHint(style: InputStyle): string {
 export function tryAgainPrompt(style: InputStyle): string {
   if (style === 'keys') return 'Move or turn, then press Space to ping.';
   return style === 'touch' ? 'Move or turn, then tap to ping.' : 'Move or turn, then choose Click to ping.';
+}
+
+// Direction pass (§13.6). A phone with one microphone cannot hear which way an echo came from, so these lines only
+// ever describe which way the phone faced. They say so out loud rather than leaving the learner to guess.
+const DEGREE_WORDS: Record<number, string> = {
+  15: 'about fifteen degrees',
+  30: 'about thirty degrees',
+  45: 'about forty-five degrees',
+  60: 'about sixty degrees',
+  75: 'about seventy-five degrees',
+  90: 'about ninety degrees',
+  105: 'about one hundred and five degrees',
+  120: 'about one hundred and twenty degrees',
+  135: 'about one hundred and thirty-five degrees',
+};
+
+/** A rounded turn as words; the rounding keeps the claim no finer than a step of the feet. */
+function turnWords(magnitudeDeg: number): string {
+  const rounded = Math.round(magnitudeDeg / HEADING.turnRoundDeg) * HEADING.turnRoundDeg;
+  return DEGREE_WORDS[rounded] ?? `about ${rounded} degrees`;
+}
+
+/** Said once, on the first ping that had a heading, so the direction pass is never a silent surprise. */
+export const HEADING_FIRST_PING =
+  'I can tell which way the phone is facing. Turn between pings and I will compare directions. I know the way the phone faces, not the way the echo came.';
+
+/** The net turn since the last measurement, in words. A failed ping has no direction, so this compares with the
+ *  last ping that actually measured something. */
+export function spokenTurn(turnDeg: number): string {
+  const magnitude = Math.abs(turnDeg);
+  if (magnitude < HEADING.sameDirectionDeg) return 'You are facing the same way as your last measurement.';
+  if (magnitude >= HEADING.turnAroundDeg) return 'You turned around since your last measurement.';
+  return `You turned ${turnWords(magnitude)} to your ${turnDeg < 0 ? 'left' : 'right'} since your last measurement.`;
+}
+
+/** Which way a reading was taken, relative to the way the learner first faced this visit. */
+export function facingWords(turnDeg: number): string {
+  const magnitude = Math.abs(turnDeg);
+  const first = 'the way you first faced';
+  if (magnitude < HEADING.sameDirectionDeg) return first;
+  if (magnitude >= HEADING.turnAroundDeg) return `the opposite of ${first}`;
+  return `${turnWords(magnitude)} to your ${turnDeg < 0 ? 'left' : 'right'} of ${first}`;
+}
+
+/** The nearest reading of the visit, named by the way the phone faced for it, or null until two directions are in.
+ *  Only spoken when the learner asks, so the reveal stays short. */
+export function nearestDirectionNote(readings: readonly DirectedRange[], firstHeadingDeg: number | null): string | null {
+  const nearest = nearestReading(readings);
+  if (!nearest || firstHeadingDeg === null || directionsMeasured(readings) < HEADING.directionsForSummary) return null;
+  const facing = facingWords(signedTurn(firstHeadingDeg, nearest.headingDeg));
+  return `Nearest reading so far: ${metres(nearest.distanceM)}, taken while you faced ${facing}. The distance is to the nearest surface, whichever side of you it was on.`;
 }
 
 export const ROOM_LISTENING = 'Listening. Stay still and quiet.';

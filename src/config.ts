@@ -237,6 +237,23 @@ export const RANGING = {
   passesToFade: 3,
 };
 
+// Direction pass for the real-room check (§13.6). One phone microphone cannot tell which way an echo came from, so
+// these only ever describe the way the phone was held at ping time; they never claim the echo's direction.
+export const HEADING = {
+  /** A sample older than this is not used: the phone may have been turned or covered since it was taken. */
+  staleMs: 1500,
+  /** Below this |cos beta| the phone points nearly straight up or down, where a heading is not trustworthy. */
+  minHorizontal: 0.35,
+  /** Two pings count as the same direction when their headings differ by less than this. */
+  sameDirectionDeg: 20,
+  /** Spoken turns are rounded to this, so the wording never claims more precision than a wave of the arm. */
+  turnRoundDeg: 15,
+  /** A net turn at least this large is said as "turned around". */
+  turnAroundDeg: 150,
+  /** Distinct directions needed before the check will name the nearest one. */
+  directionsForSummary: 2,
+} as const;
+
 // Click coach (§13.7): judges the learner's own tongue click from the mic. Thresholds are first guesses for a phone
 // mic about 10-20 cm from the mouth with AGC off; tune them against real clicks on a device.
 export const CLICK_COACH = {

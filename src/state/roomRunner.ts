@@ -4,9 +4,12 @@ import { RANGING, ROOM_FAILS_BEFORE_TIP } from '../config';
 import { closeRanger, measureNearestSurface, openRanger } from '../audio/ranger';
 import { stopAll } from '../audio/player';
 import type { Range } from '../engine/ranging';
+import { signedTurn, type DirectedRange } from '../engine/roomDirection';
+import { currentHeading, startCompass, stopCompass } from '../input/compass';
 import { currentInputStyle } from '../input/inputStyle';
 import {
-  guessHelp, guessPrompt, judgeGuess, noWall, revealHint, ROOM_LISTENING, ROOM_MIC_BLOCKED, roomIntro, tryAgainPrompt,
+  guessHelp, guessPrompt, HEADING_FIRST_PING, judgeGuess, nearestDirectionNote, noWall, revealHint, ROOM_LISTENING,
+  ROOM_MIC_BLOCKED, roomIntro, spokenTurn, tryAgainPrompt,
   type GuessJudgement,
 } from '../speech/roomText';
 import { cancel } from '../speech/narrator';
@@ -24,6 +27,12 @@ let closeStreak = 0;
 let failsInRow = 0;
 let lastJudgement: GuessJudgement | null = null;
 let busy = false;
+// Direction pass (§13.6): the way the phone faced at each measured ping, plus the first facing as the reference.
+// Empty when the phone has no heading sensor, and then nothing about direction is ever said.
+let readings: DirectedRange[] = [];
+let firstHeading: number | null = null;
+let lastHeading: number | null = null;
+let headingExplained = false;
 /** Bumped on every visit and every exit, so a ping still running from an earlier visit speaks and changes nothing. */
 let visit = 0;
 /** Bumped whenever the room speaks something new, so an introduction still being read stops at once. */
@@ -57,6 +66,11 @@ export function startRoom(): void {
   guess = RANGING.guessStartM;
   failsInRow = 0;
   lastJudgement = null;
+  readings = [];
+  firstHeading = null;
+  lastHeading = null;
+  headingExplained = false;
+  startCompass();
   stopAll();
   S().patch({ phase: 'realRoom', levelId: null, lessonId: null, trial: null, lastHits: [], lastPose: null });
   changed();
@@ -101,9 +115,25 @@ async function ping(): Promise<void> {
     failsInRow = 0;
     range = found;
     guess = RANGING.guessStartM;
+    // The heading is read before the reveal is spoken, while the learner still stands the way they pinged.
+    const heading = currentHeading();
+    const turn = heading !== null && lastHeading !== null ? signedTurn(lastHeading, heading) : null;
+    if (heading !== null) {
+      readings.push({ headingDeg: heading, distanceM: found.distanceM });
+      firstHeading = firstHeading ?? heading;
+      lastHeading = heading;
+    }
+    const style = currentInputStyle();
+    const said = ['Got it.'];
+    if (heading !== null && !headingExplained) {
+      headingExplained = true;
+      said.push(HEADING_FIRST_PING);
+    }
+    if (turn !== null) said.push(spokenTurn(turn));
+    said.push(guessPrompt(guess), guessHelp(style));
     sub = 'pinged';
     changed();
-    await tell(`Got it. ${guessPrompt(guess)} ${guessHelp(currentInputStyle())}`);
+    await tell(said.join(' '));
   } catch (err) {
     console.error(err);
     if (here()) void tell('Something went wrong with that ping. Try again.', { isError: true });
@@ -134,6 +164,11 @@ function lockIn(): void {
 export function abortRoom(): void {
   visit++;
   speaking++;
+  stopCompass();
+  readings = [];
+  firstHeading = null;
+  lastHeading = null;
+  headingExplained = false;
   closeRanger();
   stopAll();
   cancel();
@@ -167,10 +202,12 @@ export function roomAction(action: Action): boolean {
       if (sub !== 'pinged') return false;
       lockIn();
       return true;
-    case 'replay':
+    case 'replay': {
       if (sub !== 'revealed' || !lastJudgement) return false;
-      void tell(lastJudgement.reveal);
+      const direction = nearestDirectionNote(readings, firstHeading);
+      void tell(direction ? `${lastJudgement.reveal} ${direction}` : lastJudgement.reveal);
       return true;
+    }
     case 'next':
       if (sub !== 'revealed') return false;
       sub = 'idle';
