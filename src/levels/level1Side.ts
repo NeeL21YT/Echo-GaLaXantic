@@ -8,7 +8,7 @@ export const level1: LevelDef = {
   id: 1,
   title: 'Which side?',
   skill: 'Direction',
-  intro: 'A wall is on your left or your right. Click with Space and listen. Answer with the left or right arrow.',
+  intro: 'A wall is on your left or your right. Listen for which side.',
   mode: 'choice',
   trials: LEVEL.l1.trials,
   passRule: results => results.filter(result => result.correct).length >= LEVEL.l1.passCorrect,

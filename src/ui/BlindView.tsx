@@ -9,15 +9,16 @@ export function BlindView() {
   const trialCount = useEcho((s) => s.trialCount);
   const stretch = useEcho((s) => s.settings.stretch);
   const micOn = useEcho((s) => s.micOn);
+  const title = getLevelTitleLine(levelId, trialIndex, trialCount);
 
   return (
     <section className="blind-view" aria-label="Echo">
       <p className="blind-message">{message || 'Echo'}</p>
-      <p className="blind-status">
-        {getLevelTitleLine(levelId, trialIndex, trialCount)}
-        {levelId !== null && ' · '}Echo speed: {stretchLabel(stretch)}
-        {micOn && <span className="mic-on"> · Mic on</span>}
-      </p>
+      <ul className="chips" aria-label="Status">
+        {title && <li className="chip">{title}</li>}
+        <li className="chip">Echo speed: {stretchLabel(stretch)}</li>
+        {micOn && <li className="chip on">Mic on</li>}
+      </ul>
     </section>
   );
 }

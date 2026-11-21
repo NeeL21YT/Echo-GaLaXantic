@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { unlockAudio } from './audio/context';
 import { setVolume } from './audio/player';
 import { attachGestures } from './input/gestures';
+import { phrases } from './input/inputStyle';
 import { attachKeyboard } from './input/keyboard';
 import { actionForVolumeKey } from './input/volumeKeys';
 import { captureVolumeKeys, isScreenReaderOn, onScreenReaderChange, onVolumeKey, vibrate } from './native/echoNative';
@@ -183,7 +184,7 @@ export function App() {
         ref={practiceRef}
         className={gestureSurface ? 'practice gesture-surface' : 'practice'}
         role="application"
-        aria-label="Echo practice area. Press H for help."
+        aria-label={phrases().areaLabel}
         tabIndex={0}
       >
         <BlindView />

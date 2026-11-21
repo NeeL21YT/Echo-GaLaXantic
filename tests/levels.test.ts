@@ -58,7 +58,9 @@ describe('runner contract', () => {
     for (const level of LEVELS) {
       expect(level.title.trim()).not.toBe('');
       expect(level.skill.trim()).not.toBe('');
-      expect(level.intro).toContain('Space');
+      // Controls are added at run time in the words of the device (keys, touch or buttons), so intros stay key-free.
+      expect(level.intro.trim()).not.toBe('');
+      expect(level.intro).not.toMatch(/\bSpace\b|\bEnter\b|\barrow\b/);
     }
   });
   it.each(LEVELS)('level $id is deterministic and assigns unsigned, index-specific seeds', level => {

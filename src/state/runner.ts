@@ -11,6 +11,7 @@ import { move, reachedExit, turn } from '../engine/collision';
 import { buildEchoes } from '../engine/echoBuilder';
 import { castRays } from '../engine/raycaster';
 import { mulberry32 } from '../engine/rng';
+import { phrases } from '../input/inputStyle';
 import { ACTION_KEY } from '../input/keyboard';
 import { getLevel } from '../levels';
 import type { AnswerResult, LevelDef, Trial } from '../levels/types';
@@ -114,7 +115,7 @@ export async function startLevel(id: LevelId): Promise<void> {
   });
   const title = /[.?!]$/.test(level.title) ? level.title : `${level.title}.`;
   void playMorse(String(id), S().settings.morse);
-  await say(`Level ${id}. ${title} ${level.intro} Press Enter to begin.`);
+  await say(`Level ${id}. ${title} ${level.intro} ${readyHint(level)} ${phrases().begin}`);
 }
 
 function beginTrial(index: number): void {
@@ -143,13 +144,15 @@ function beginTrial(index: number): void {
   void say(index === 0 ? `Trial 1 of ${level.trials}. ${readyHint(level)}` : `Trial ${index + 1} of ${level.trials}.`);
 }
 
+/** How to play the level, in the words of the way the learner is controlling Echo (keys, touch or buttons). */
 function readyHint(level: LevelDef): string {
+  const p = phrases();
   if (level.mode === 'choice') {
-    const answers = Object.values(level.answerKeys).join(' or ');
-    return `Press Space to click. Then answer ${answers}.`;
+    const sides = Object.values(level.answerKeys).includes('left');
+    return `${p.click} ${sides ? p.answerSide : p.answerDistance}`;
   }
-  if (level.mode === 'aim') return 'Turn with A and D. Press Space to click. Press Enter when you face the door.';
-  return 'Walk with W and S. Turn with A and D. Press Space to click.';
+  if (level.mode === 'aim') return `${p.turn} ${p.click} ${p.faceDoor}`;
+  return `${p.walk} ${p.turn} ${p.click}`;
 }
 
 function markStarted(): void {
@@ -198,7 +201,7 @@ async function answer(action: Action): Promise<boolean> {
   const value = answerValueFor(level, action);
   if (value === undefined) return false;
   if (st.clicksThisTrial < 1) {
-    await say('Click first. Press Space to hear the room.');
+    await say(phrases().clickFirst);
     return true;
   }
   const result = level.check(st.trial, value, st.pose, trialElapsed());
@@ -232,7 +235,7 @@ async function finishTrial(result: AnswerResult, answerValue: string | number | 
   await (result.correct ? correct() : wrong());
   void playMorse(result.correct ? MORSE.pass : MORSE.miss, st.settings.morse);
   if (!isCurrent(id)) return;
-  const hint = st.trialIndex === 0 ? ` Press R to replay${result.contrast ? ', C to compare' : ''}, or N for next.` : '';
+  const hint = st.trialIndex === 0 ? phrases().feedbackHint(Boolean(result.contrast)) : '';
   await say(result.explanation + hint);
 }
 
@@ -307,9 +310,9 @@ async function summary(level: LevelDef): Promise<void> {
   if (passed) await levelUp();
   let text = `Level ${level.id}. ${score} out of ${total}.${prev} ${passed ? 'Passed.' : 'Not yet.'}`;
   if (offer !== null) {
-    text += ` You passed three times in a row. Try echoes closer to real speed, at ${offer} times? Press Y for yes.`;
+    text += ` You passed three times in a row. Try echoes closer to real speed, at ${offer} times? ${phrases().yes}`;
   }
-  await say(`${text} Press Enter for the level list.`);
+  await say(`${text} ${phrases().levelList}`);
 }
 
 // ---------- movement (navigate levels; turning also used by aim) ----------
@@ -383,8 +386,8 @@ export async function setClickSource(source: ClickSource): Promise<ClickSource> 
 
 async function help(): Promise<void> {
   const level = currentLevel();
-  const keys = 'Space clicks. R replays. C compares. N goes to the next trial. V shows the observer view. Escape goes to the level list.';
-  await say(level ? `${readyHint(level)} ${keys}` : keys);
+  const general = phrases().help;
+  await say(level ? `${readyHint(level)} ${general}` : general);
 }
 
 async function acceptStretch(): Promise<boolean> {

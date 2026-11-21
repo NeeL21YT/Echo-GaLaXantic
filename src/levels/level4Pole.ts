@@ -8,7 +8,7 @@ export const level4: LevelDef = {
   id: 4,
   title: 'The pole',
   skill: 'Small objects',
-  intro: 'Reach the end of the corridor. Listen for the small, short echo of a pole. Click with Space. Walk with W and S. Turn with A and D.',
+  intro: 'Reach the end of the corridor. Listen for the small, short echo of a pole.',
   mode: 'navigate',
   trials: LEVEL.l4.trials,
   passRule: results => results.filter(result => result.correct).length >= LEVEL.l4.passRuns,

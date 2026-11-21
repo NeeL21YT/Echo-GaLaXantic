@@ -3,6 +3,7 @@
 // (see the CLAUDE.md Decisions log).
 import { useEffect, useState, type KeyboardEvent } from 'react';
 import { unlockAudio } from '../audio/context';
+import { phrases } from '../input/inputStyle';
 import { lrTest } from '../audio/sfx';
 import { spokenNumber } from '../levels/feedback';
 import { initNarrator, speak } from '../speech/narrator';
@@ -24,7 +25,7 @@ export function Onboarding() {
 
   const playSide = async (s: Side) => {
     setSide(s);
-    await say(`Press ${s} arrow when you hear the tone.`);
+    await say(phrases().tone(s));
     await lrTest(s);
   };
 
@@ -105,7 +106,7 @@ export function Onboarding() {
       )}
       {step === 'headphones' && (
         <>
-          <p>Press the arrow for the side where you hear the tone.</p>
+          <p>Press the button for the side where you hear the tone.</p>
           <button type="button" onClick={() => void answerSide('left')} autoFocus>
             Left (←)
           </button>
@@ -124,7 +125,7 @@ export function Onboarding() {
         <>
           <p>Use your own tongue click?</p>
           <button type="button" onClick={() => void finish()} autoFocus>
-            Skip, use the Space key
+            Skip, use tap or the Space key
           </button>
           <button type="button" onClick={() => void enableMic()}>
             Yes, use my microphone

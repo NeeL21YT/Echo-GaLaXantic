@@ -8,7 +8,7 @@ export const level2: LevelDef = {
   id: 2,
   title: 'Near or far?',
   skill: 'Distance',
-  intro: 'A wall is near or far ahead. Click with Space. Near echoes come sooner and sound brighter. Press one for near or two for far.',
+  intro: 'A wall is near or far ahead. Near echoes come sooner and sound brighter.',
   mode: 'choice',
   trials: LEVEL.l2.trials,
   passRule: results => results.filter(result => result.correct).length >= LEVEL.l2.passCorrect,

@@ -7,7 +7,7 @@ export const level5: LevelDef = {
   id: 5,
   title: 'Escape',
   skill: 'Combined',
-  intro: `Find the exit in under ${spokenNumber(LEVEL.l5.timeLimitS)} seconds. Listen for the side where the echo opens up. Click with Space. Walk with W and S. Turn with A and D.`,
+  intro: `Find the exit in under ${spokenNumber(LEVEL.l5.timeLimitS)} seconds. Listen for the side where the echo opens up.`,
   mode: 'navigate',
   trials: LEVEL.l5.trials,
   passRule: results => results[0]?.correct ?? false,

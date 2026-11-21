@@ -9,7 +9,7 @@ export const level3: LevelDef = {
   id: 3,
   title: 'Find the door',
   skill: 'Gaps are silent',
-  intro: 'Listen for the quiet gap in the room. Turn with A and D. Click with Space. Press Enter when you face the door.',
+  intro: 'Listen for the quiet gap in the room.',
   mode: 'aim',
   trials: LEVEL.l3.trials,
   passRule: results => results.filter(result => result.correct).length >= LEVEL.l3.passCorrect,
