@@ -19,5 +19,7 @@ export type Hit = {
   point: Vec2;
   cosTheta: number;
   reflectance: number;
+  /** Which surface reflected the ray; poles are kept apart from walls when voices are merged and capped. */
+  kind: 'wall' | 'pole';
 };
 export type EchoVoice = { delayS: number; gain: number; cutoffHz: number; azDeg: number; d: number };
