@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { unlockAudio } from './audio/context';
-import { setVolume } from './audio/player';
+import { isPlaying, setVolume } from './audio/player';
 import { attachGestures } from './input/gestures';
 import { phrases } from './input/inputStyle';
 import { attachReadAloud } from './input/readAloud';
@@ -13,7 +13,7 @@ import { saveSettings } from './state/progress';
 import { Announcer } from './speech/Announcer';
 import { lessonAction, lessonActions } from './state/lessonRunner';
 import { roomAction, roomActions } from './state/roomRunner';
-import { dispatch, validActions } from './state/runner';
+import { dispatch, say, startLevel, validActions } from './state/runner';
 import { useEcho, type Action } from './state/store';
 import { BlindView } from './ui/BlindView';
 import { Controls } from './ui/Controls';
@@ -23,6 +23,7 @@ import { ObserverView } from './ui/ObserverView';
 import { Onboarding } from './ui/Onboarding';
 import { ProgressPanel } from './ui/ProgressPanel';
 import { Settings } from './ui/Settings';
+import { buttonSpeechLabel, levelSelectPrompt } from './ui/labels';
 
 const isDevAudio = import.meta.env.DEV && new URLSearchParams(window.location.search).get('dev') === 'audio';
 
@@ -81,22 +82,39 @@ export function App() {
   useEffect(() => {
     const el = practiceRef.current;
     if (!el) return;
-    return attachKeyboard(el, (a) => onActionRef.current(a));
+    return attachKeyboard(el, () => useEcho.getState().phase, (command) => {
+      if (command.type === 'action') return onActionRef.current(command.action);
+      if (command.type === 'level') {
+        void startLevel(command.levelId);
+        return true;
+      }
+      return false;
+    });
   }, []);
 
   // Returning users skip the Start button, so audio and speech unlock on their first gesture instead.
   useEffect(() => {
     const el = practiceRef.current;
     if (!el) return;
-    const unlock = () => {
+    let unlocked = false;
+    const unlock = (event: Event) => {
+      if (unlocked || (event instanceof KeyboardEvent && event.repeat)) return;
+      unlocked = true;
       void unlockAudio();
       initNarrator();
+      if (useEcho.getState().phase === 'levelSelect') {
+        // The first Tab also focuses a button; let its focus label happen before the full instructions.
+        requestAnimationFrame(() => {
+          if (useEcho.getState().phase === 'levelSelect') void say(levelSelectPrompt());
+        });
+      }
     };
-    el.addEventListener('pointerdown', unlock, { once: true });
-    el.addEventListener('keydown', unlock, { once: true });
+    // Capture runs before shortcuts can change phase, and one guard covers both gesture types.
+    el.addEventListener('pointerdown', unlock, true);
+    el.addEventListener('keydown', unlock, true);
     return () => {
-      el.removeEventListener('pointerdown', unlock);
-      el.removeEventListener('keydown', unlock);
+      el.removeEventListener('pointerdown', unlock, true);
+      el.removeEventListener('keydown', unlock, true);
     };
   }, []);
 
@@ -168,6 +186,21 @@ export function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const el = practiceRef.current;
+    if (!el) return;
+    const onFocus = (event: FocusEvent) => {
+      const button = event.target;
+      if (!(button instanceof HTMLButtonElement) || !button.matches(':focus-visible')) return;
+      if (useEcho.getState().settings.narration !== 'voice' || isPlaying()) return;
+      const label = button.getAttribute('aria-label') ?? button.textContent ?? '';
+      cancelSpeech();
+      void speak(buttonSpeechLabel(label));
+    };
+    el.addEventListener('focusin', onFocus);
+    return () => el.removeEventListener('focusin', onFocus);
+  }, []);
+
   // Persist settings and apply side effects; switching to screen-reader mode silences our own voice at once.
   useEffect(() => {
     setVolume(useEcho.getState().settings.volume);
@@ -206,7 +239,7 @@ export function App() {
         tabIndex={0}
       >
         <BlindView />
-        {phase === 'onboarding' && <Onboarding />}
+        {phase === 'onboarding' && <Onboarding practiceRef={practiceRef} />}
         {phase === 'levelSelect' && <LevelSelect />}
         {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} />}
         <Controls actions={actions} onAction={onAction} disabled={disabled} labels={labels} />

@@ -7,12 +7,15 @@ import { startLevel } from '../state/runner';
 import { useEcho } from '../state/store';
 import { SetupSummary } from './SetupSummary';
 
-type CardProps = { title: string; sub: string; badge?: string; quiet?: boolean; onClick: () => void };
+type CardProps = { title: string; sub: string; badge?: string; quiet?: boolean; keyHint?: string; onClick: () => void };
 
-function Card({ title, sub, badge, quiet, onClick }: CardProps) {
+function Card({ title, sub, badge, quiet, keyHint, onClick }: CardProps) {
   return (
     <button type="button" className="card" onClick={onClick}>
-      <span className="card-title">{title}</span>
+      <span className="card-title">
+        {title}
+        {keyHint && <span className="key-hint"> ({keyHint})</span>}
+      </span>
       <span className="card-sub">{sub}</span>
       {badge && <span className={quiet ? 'badge quiet' : 'badge'}>{badge}</span>}
     </button>
@@ -59,6 +62,7 @@ export function LevelSelect() {
               sub={level.skill}
               badge={best ?? 'New'}
               quiet={!best}
+              keyHint={String(level.id)}
               onClick={() => void startLevel(level.id)}
             />
           );

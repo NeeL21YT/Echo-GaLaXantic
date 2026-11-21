@@ -4,6 +4,7 @@ import { DEFAULT_STRETCH } from '../config';
 import { isOnboarded, loadSettings } from './progress';
 import type { AnswerResult, LevelDef, Trial } from '../levels/types';
 import type { EchoVoice, Hit, Pose } from '../types';
+import { START_PROMPT } from '../ui/labels';
 
 export type Phase = 'onboarding' | 'levelSelect' | 'lesson' | 'realRoom' | 'intro' | 'ready' | 'answered' | 'feedback' | 'summary';
 export type Narration = 'voice' | 'screenreader';
@@ -131,7 +132,7 @@ export const useEcho = create<EchoState>()((set) => ({
   screenReaderOn: false,
   micOn: false,
   micClicks: 0,
-  message: onboarded ? 'Welcome back. Choose a level.' : 'Echo. Press Start.',
+  message: onboarded ? 'Welcome back. Choose a level.' : START_PROMPT,
   announcement: { text: '', id: 0, isError: false },
   patch: (p) => set(p),
   setSettings: (p) => set((s) => ({ settings: { ...s.settings, ...p } })),

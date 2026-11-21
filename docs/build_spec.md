@@ -373,6 +373,8 @@ Every action has a real `<button>` with a visible label and a key hint: Click, �
 ### 9.3 Keyboard (`input/keyboard.ts`)
 - Listener attached to the practice container (`role="application"`, `aria-label="Echo practice area. Press H for help."`, `tabIndex=0`), **not** to `window`. Keys work only while it is focused.
 - Ignore `event.repeat`.
+- During setup, any key starts; Y/N choose screen reader/voice, left/right arrows answer the headphone check, Enter or N skips the mic, M enables it, and Enter finishes the mic test. Focused buttons retain native Space/Enter activation after Start; the default focused choices are voice and skipping the mic.
+- In level select, 1–5 start the corresponding level and H repeats the spoken list of titles and keys. In ready, 1/2 still answer near/far.
 - Map: Space click · ← → · 1 2 · A D turn · W S step · Enter answer/begin/next · R replay · C contrast · Y accept stretch · V observer · H help (speaks the key map) · Esc to level select.
 
 ### 9.4 Narration modes
@@ -381,14 +383,15 @@ Every action has a real `<button>` with a visible label and a key hint: Click, �
 - Never both at once.
 - **Before any stimulus plays:** `narrator.cancel()` and await idle. In screen-reader mode the stimulus only plays on an explicit Space press, so the player controls timing.
 - Messages are announced only at phase changes, results and errors — not on every state change.
+- In voice mode, keyboard focus on a button speaks its label and key hint, replacing earlier focus speech. Screen-reader mode and an actively playing stimulus suppress these focus announcements.
 
 ### 9.5 Onboarding (`Onboarding.tsx`)
-1. "Start" button: creates/resumes the AudioContext.
-2. Headphone check: "Press left arrow when you hear the tone." Play `lrTest('left')`, then the same for right. If wrong twice, say "Your headphones may be reversed or not stereo." Allow continuing anyway.
-3. "Do you use a screen reader?" with Yes/No buttons, which sets the narration mode.
-4. Mic is optional: "Use your own tongue click? You can turn this on later in Settings." Skip is the default. If enabled: permission prompt, then "Click your tongue three times." Show and speak the detection count. On permission denied: "Microphone blocked. Using the Space key." and continue.
-5. Go to level select.
-6. Store completion so returning users skip onboarding (there is a "Redo setup" button in Settings).
+1. A full-viewport real button says "Press any key or tap anywhere to start Echo." Any first key/pointer press on the practice container starts setup and creates/resumes the AudioContext. No speech is expected before a gesture.
+2. "Welcome to Echo. Do you use a screen reader? Press Y for yes or N for no." Yes/No buttons set the narration mode; "No, speak to me" has autofocus so an accidental Enter keeps voice narration. This question precedes the headphone check (see Decisions log).
+3. Headphone check: "Press left arrow when you hear the tone." Play `lrTest('left')`, then the same for right. If wrong twice, say "Your headphones may be reversed or not stereo." Allow continuing anyway.
+4. Mic is optional: "Use your own tongue click? Press Enter or N to skip and use the Space key. Press M to use the microphone. You can turn this on later in Settings." Skip is the default. If enabled: permission prompt, then "Click your tongue three times. Press Enter when done." Show and speak the detection count. On permission denied: "Microphone blocked. Using the Space key." and continue.
+5. Go to level select and speak each level's title with its number shortcut, followed by "Press H for help."
+6. Store completion so returning users skip onboarding (there is a "Redo setup" button in Settings). Their first key/pointer gesture unlocks audio and speaks the level-select prompt.
 
 ### 9.6 Visual design
 - Black background, white text, one accent colour (`#7CF5FF`) for rays and focus rings.

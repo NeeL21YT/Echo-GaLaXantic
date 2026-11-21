@@ -1,6 +1,17 @@
 // User-facing labels shared by the views, written the way a voice would say them.
-import { getLevel } from '../levels';
+import { getLevel, LEVELS } from '../levels';
 import type { Action, LevelId } from '../state/store';
+
+export const START_PROMPT = 'Press any key or tap anywhere to start Echo.';
+
+export function levelSelectPrompt(): string {
+  const choices = LEVELS.map((level) => `${level.id} for ${level.title.replace(/[.?!]+$/, '')}`);
+  return `Choose a level. Press ${choices.join(', ')}. Press H for help.`;
+}
+
+export function buttonSpeechLabel(label: string): string {
+  return label.trim().replace(/\s*\(([^)]+)\)/g, ', $1').replace(/←/g, 'Left arrow').replace(/→/g, 'Right arrow');
+}
 
 export function stretchLabel(stretch: number): string {
   if (stretch === 1) return 'real speed';

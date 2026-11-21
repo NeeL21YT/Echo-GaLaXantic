@@ -294,6 +294,20 @@ button:active:not(:disabled) {
   font-weight: 500;
 }
 
+.start-button {
+  position: fixed;
+  z-index: 1;
+  inset: 0;
+  width: 100%;
+  min-height: 100vh;
+  border-radius: 0;
+  font-size: 48px;
+}
+
+.start-button:focus-visible {
+  outline-offset: -3px;
+}
+
 .observer-panel {
   position: relative;
   min-height: 100vh;

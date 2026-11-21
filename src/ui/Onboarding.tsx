@@ -1,27 +1,35 @@
 // First-run setup (§9.5): Start → screen-reader question → headphone check → optional mic → level list.
 // The screen-reader question comes before the headphone check so speech never talks over a screen reader
 // (see the CLAUDE.md Decisions log).
-import { useEffect, useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
+import { ONBOARDING } from '../config';
 import { unlockAudio } from '../audio/context';
 import { phrases } from '../input/inputStyle';
 import { lrTest } from '../audio/sfx';
+import { attachKeyboard } from '../input/keyboard';
 import { spokenNumber } from '../levels/feedback';
 import { initNarrator, speak } from '../speech/narrator';
 import { setOnboarded } from '../state/progress';
 import { goToLevelSelect, say, setClickSource } from '../state/runner';
 import { useEcho } from '../state/store';
+import type { OnboardingAction, OnboardingStep } from '../types';
+import { START_PROMPT } from './labels';
 
-type Step = 'start' | 'narration' | 'headphones' | 'mic' | 'micTest';
 type Side = 'left' | 'right';
 
-const MIC_TEST_CLICKS = 3;
-
-export function Onboarding() {
-  const [step, setStep] = useState<Step>('start');
+export function Onboarding({ practiceRef }: { practiceRef: RefObject<HTMLDivElement> }) {
+  const [step, setStep] = useState<OnboardingStep>('start');
+  const stepRef = useRef(step);
+  const starting = useRef(false);
   const [side, setSide] = useState<Side>('left');
   const [misses, setMisses] = useState(0);
   const [micBaseline, setMicBaseline] = useState(0);
   const setSettings = useEcho((s) => s.setSettings);
+
+  const changeStep = (next: OnboardingStep) => {
+    stepRef.current = next;
+    setStep(next);
+  };
 
   const playSide = async (s: Side) => {
     setSide(s);
@@ -30,24 +38,24 @@ export function Onboarding() {
   };
 
   const start = async () => {
+    // Pointerdown and the button's native click can be part of the same gesture.
+    if (starting.current || stepRef.current !== 'start') return;
+    starting.current = true;
     await unlockAudio();
     initNarrator();
-    setStep('narration');
-    await say('Welcome to Echo. Do you use a screen reader? Choose yes or no.');
+    changeStep('narration');
   };
 
-  const chooseNarration = async (screenReader: boolean) => {
+  const chooseNarration = (screenReader: boolean) => {
     setSettings({ narration: screenReader ? 'screenreader' : 'voice' });
-    setStep('headphones');
-    await say('Headphone check. Put on your headphones.');
-    await playSide('left');
+    changeStep('headphones');
   };
 
   const answerSide = async (heard: Side) => {
     if (heard !== side) {
       const n = misses + 1;
       setMisses(n);
-      if (n >= 2) {
+      if (n >= ONBOARDING.headphoneMisses) {
         await say('Your headphones may be reversed or not stereo. You can continue anyway.');
         return goToMic();
       }
@@ -59,9 +67,8 @@ export function Onboarding() {
     return goToMic();
   };
 
-  const goToMic = async () => {
-    setStep('mic');
-    await say('Use your own tongue click? You can turn this on later in Settings.');
+  const goToMic = () => {
+    changeStep('mic');
   };
 
   const enableMic = async () => {
@@ -69,8 +76,7 @@ export function Onboarding() {
     const source = await setClickSource('mic');
     if (source !== 'mic') return finish();
     setMicBaseline(useEcho.getState().micClicks);
-    setStep('micTest');
-    await say(`Click your tongue ${MIC_TEST_CLICKS} times.`);
+    changeStep('micTest');
   };
 
   const finish = async () => {
@@ -78,29 +84,70 @@ export function Onboarding() {
     await goToLevelSelect();
   };
 
-  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (step !== 'headphones' || e.repeat) return;
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-      e.preventDefault();
-      void answerSide(e.key === 'ArrowLeft' ? 'left' : 'right');
+  const onAction = (action: OnboardingAction) => {
+    switch (action) {
+      case 'start': void start(); break;
+      case 'screenreader': void chooseNarration(true); break;
+      case 'voice': void chooseNarration(false); break;
+      case 'left': void answerSide('left'); break;
+      case 'right': void answerSide('right'); break;
+      case 'skipMic':
+      case 'done': void finish(); break;
+      case 'enableMic': void enableMic(); break;
     }
   };
+  const onActionRef = useRef(onAction);
+  onActionRef.current = onAction;
+
+  useEffect(() => {
+    const el = practiceRef.current;
+    if (!el) return;
+    const detach = attachKeyboard(el, () => stepRef.current, (command) => {
+      if (command.type !== 'onboarding') return false;
+      onActionRef.current(command.action);
+      return true;
+    });
+    const onPointer = () => {
+      if (stepRef.current === 'start') onActionRef.current('start');
+    };
+    el.addEventListener('pointerdown', onPointer);
+    return () => {
+      detach();
+      el.removeEventListener('pointerdown', onPointer);
+    };
+  }, [practiceRef]);
+
+  // Autofocus runs first; its short label must not replace the step's instructions.
+  useEffect(() => {
+    if (step === 'narration') {
+      void say('Welcome to Echo. Do you use a screen reader? Press Y for yes or N for no.');
+    } else if (step === 'headphones') {
+      void (async () => {
+        await say('Headphone check. Put on your headphones.');
+        await playSide('left');
+      })();
+    } else if (step === 'mic') {
+      void say('Use your own tongue click? Press Enter or N to skip and use the Space key. Press M to use the microphone. You can turn this on later in Settings.');
+    } else if (step === 'micTest') {
+      void say(`Click your tongue ${spokenNumber(ONBOARDING.micTestClicks)} times. Press Enter when done.`);
+    }
+  }, [step]);
 
   return (
-    <div className="onboarding" onKeyDown={onKeyDown}>
+    <div className="onboarding">
       {step === 'start' && (
-        <button type="button" onClick={() => void start()} autoFocus>
-          Start
+        <button type="button" className="start-button" onClick={() => void start()} autoFocus>
+          {START_PROMPT}
         </button>
       )}
       {step === 'narration' && (
         <>
           <p>Do you use a screen reader?</p>
-          <button type="button" onClick={() => void chooseNarration(true)} autoFocus>
-            Yes, I use a screen reader
+          <button type="button" onClick={() => void chooseNarration(true)}>
+            Yes, I use a screen reader (Y)
           </button>
-          <button type="button" onClick={() => void chooseNarration(false)}>
-            No, speak to me
+          <button type="button" onClick={() => void chooseNarration(false)} autoFocus>
+            No, speak to me (N)
           </button>
         </>
       )}
@@ -125,10 +172,10 @@ export function Onboarding() {
         <>
           <p>Use your own tongue click?</p>
           <button type="button" onClick={() => void finish()} autoFocus>
-            Skip, use tap or the Space key
+            Skip, use tap or the Space key (Enter or N)
           </button>
           <button type="button" onClick={() => void enableMic()}>
-            Yes, use my microphone
+            Yes, use my microphone (M)
           </button>
         </>
       )}
@@ -147,8 +194,8 @@ function MicTest({ baseline, onDone }: MicTestProps) {
 
   useEffect(() => {
     if (heard <= 0) return;
-    const text = heard >= MIC_TEST_CLICKS
-      ? `${spokenNumber(heard)} clicks heard. The microphone works.`
+    const text = heard >= ONBOARDING.micTestClicks
+      ? `${spokenNumber(heard)} clicks heard. The microphone works. Press Enter when done.`
       : `${spokenNumber(heard)} clicks heard so far.`;
     if (narration === 'voice') void speak(text);
   }, [heard, narration]);
@@ -156,10 +203,10 @@ function MicTest({ baseline, onDone }: MicTestProps) {
   return (
     <>
       <p aria-live="polite">
-        {micOn ? `Clicks heard: ${heard} of ${MIC_TEST_CLICKS}.` : 'Microphone is off.'}
+        {micOn ? `Clicks heard: ${heard} of ${ONBOARDING.micTestClicks}.` : 'Microphone is off.'}
       </p>
       <button type="button" onClick={onDone} autoFocus>
-        Done
+        Done (Enter)
       </button>
     </>
   );
