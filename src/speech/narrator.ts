@@ -7,6 +7,8 @@ type Pending = { utter: SpeechSynthesisUtterance; resolve: () => void };
 const pending = new Set<Pending>();
 let voice: SpeechSynthesisVoice | null = null;
 let listening = false;
+/** Set when the browser's speech engine failed to start or finish an utterance in time. */
+let speechBroken = false;
 
 const synth = (): SpeechSynthesis | null => (typeof window !== 'undefined' && 'speechSynthesis' in window ? window.speechSynthesis : null);
 
@@ -66,12 +68,27 @@ export function speak(text: string): Promise<void> {
     utter.lang = voice?.lang ?? NARRATION.lang;
     if (voice) utter.voice = voice;
     const entry: Pending = { utter, resolve };
+    let startTimer: ReturnType<typeof setTimeout> | undefined;
+    let endTimer: ReturnType<typeof setTimeout> | undefined;
     const done = () => {
+      clearTimeout(startTimer);
+      clearTimeout(endTimer);
       if (pending.delete(entry)) resolve();
+    };
+    // An engine that never reports start or end (seen in Brave) would otherwise block every sound that follows.
+    const giveUp = () => {
+      speechBroken = true;
+      s.cancel();
+      done();
+    };
+    utter.onstart = () => {
+      clearTimeout(startTimer);
+      endTimer = setTimeout(giveUp, nativeSpeechTimeoutMs(text));
     };
     utter.onend = done;
     utter.onerror = done;
     pending.add(entry);
+    startTimer = setTimeout(giveUp, NARRATION.webStartTimeoutMs);
     s.speak(utter);
   });
 }
@@ -87,6 +104,8 @@ export function cancel(): void {
 export function isSpeaking(): boolean {
   if (isNative()) return nativeSpeechPending();
   const s = synth();
+  // After a watchdog fired the engine's own flags can stay true forever, so only our own queue counts.
+  if (speechBroken) return pending.size > 0;
   return pending.size > 0 || (s !== null && (s.speaking || s.pending));
 }
 

@@ -109,6 +109,9 @@ export const NARRATION = {
   // that follows. After this long (per character plus slack) it is treated as finished.
   nativeMsPerChar: 150,
   nativeSlackMs: 5000,
+  // Brave exposes speechSynthesis but may never start or end an utterance. If speech has not started this soon,
+  // the browser's voice is treated as broken and every sound after it must not wait for it.
+  webStartTimeoutMs: 2500,
 };
 
 // Feedback (§7.3).
