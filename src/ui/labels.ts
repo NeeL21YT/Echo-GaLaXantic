@@ -2,6 +2,7 @@
 import { getLevel } from '../levels';
 import { spokenDecimal, spokenNumber } from '../levels/feedback';
 import { phrases } from '../input/inputStyle';
+import { realRoomAvailable } from '../input/platform';
 import type { Action, LevelId } from '../state/store';
 
 export const START_PROMPT = 'Press any key or tap anywhere to start Echo.';
@@ -12,7 +13,8 @@ export const LEVEL_LIST_HEADING = 'Choose a lesson or a level.';
 export function levelSelectPrompt(): string {
   const custom = phrases().levelPrompt;
   if (custom) return custom;
-  return 'Press 1 to 5 to start a level. Press Tab to reach lessons and the real room check. Press H for help.';
+  const reach = realRoomAvailable() ? 'lessons and the real room check' : 'the lessons';
+  return `Press 1 to 5 to start a level. Press Tab to reach ${reach}. Press H for help.`;
 }
 
 export function buttonSpeechLabel(label: string): string {

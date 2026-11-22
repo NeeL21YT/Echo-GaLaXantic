@@ -3,6 +3,7 @@ import { LEVELS } from '../levels';
 import { spokenNumber } from '../levels/feedback';
 import { getLessonsDone, levelStats } from '../state/progress';
 import { startLesson } from '../state/lessonRunner';
+import { realRoomAvailable } from '../input/platform';
 import { startRoom } from '../state/roomRunner';
 import { startLevel } from '../state/runner';
 import { useEcho } from '../state/store';
@@ -45,14 +46,16 @@ export function LevelSelect() {
           />
         ))}
       </nav>
-      <nav className="level-select" aria-label="Real room">
-        <h2>Real room</h2>
-        <Card
-          title="Real room check"
-          sub="Guess how far a wall is, then hear the measured distance."
-          onClick={() => startRoom()}
-        />
-      </nav>
+      {realRoomAvailable() && (
+        <nav className="level-select" aria-label="Real room">
+          <h2>Real room</h2>
+          <Card
+            title="Real room check"
+            sub="Guess how far a wall is, then hear the measured distance."
+            onClick={() => startRoom()}
+          />
+        </nav>
+      )}
       <nav className="level-select" aria-label="Practise">
         <h2>Practise</h2>
         {LEVELS.map((level) => {

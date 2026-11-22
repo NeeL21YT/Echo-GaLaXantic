@@ -7,7 +7,8 @@ import { startClickCoach, stopClickCoach } from '../audio/clickCoach';
 import { play, stopAll } from '../audio/player';
 import { correct } from '../audio/sfx';
 import { currentInputStyle } from '../input/inputStyle';
-import { getLesson, LESSONS, type LessonPage } from '../levels/lessons';
+import { realRoomAvailable } from '../input/platform';
+import { getLesson, LESSONS, type LessonDef, type LessonPage } from '../levels/lessons';
 import { CLICK_ADVICE } from '../speech/clickText';
 import {
   COACH_BREATH, COACH_LISTENING, COACH_MIC_OFF, COACH_NO_MIC, coachDone, helpThenAgain, lessonHelp, lessonOpening, pageHint,
@@ -123,7 +124,7 @@ async function playPage(page: LessonPage, job: number, opening: string | null): 
   await say(pageHint(currentInputStyle(), {
     page: st.lessonPage + 1,
     pages: lesson.pages.length,
-    practiceLevel: lesson.practiceLevel,
+    practiceLevel: practiceTarget(lesson),
     hasNextLesson: LESSONS.some((l) => l.id === lesson.id + 1),
   }));
 }
@@ -158,6 +159,11 @@ export function startLesson(id: number): void {
   endCoach();
   S().patch({ phase: 'lesson', lessonId: id, lessonPage: 0, levelId: null, trial: null, lastHits: [], lastPose: null });
   present();
+}
+
+/** Where "Practise this" leads. The real room check is a phone feature, so on a desktop lesson 6 simply ends. */
+function practiceTarget(lesson: LessonDef): LessonDef['practiceLevel'] {
+  return lesson.practiceLevel === 'room' && !realRoomAvailable() ? null : lesson.practiceLevel;
 }
 
 function isLastPage(): boolean {
@@ -195,12 +201,13 @@ export function lessonAction(action: Action): boolean {
       return true;
     case 'answer':
       // "Practise this" on the last page of a lesson that has a matching level.
-      if (isLastPage() && lesson.practiceLevel !== null) {
+      if (isLastPage() && practiceTarget(lesson) !== null) {
         markLessonDone(lesson.id);
         // The page may still be speaking; it must not carry on over the level's own introduction.
         abortTeaching();
-        if (lesson.practiceLevel === 'room') startRoom();
-        else void startLevel(lesson.practiceLevel);
+        const target = practiceTarget(lesson);
+        if (target === 'room') startRoom();
+        else if (target !== null) void startLevel(target);
         return true;
       }
       return false;
@@ -225,6 +232,6 @@ export function lessonActions(): Action[] {
   const st = S();
   if (st.lessonId === null) return ['levelSelect'];
   const lesson = getLesson(st.lessonId);
-  const practise = isLastPage() && lesson.practiceLevel !== null ? (['answer'] as const) : [];
+  const practise = isLastPage() && practiceTarget(lesson) !== null ? (['answer'] as const) : [];
   return ['next', 'replay', ...practise, 'help', 'levelSelect'];
 }
