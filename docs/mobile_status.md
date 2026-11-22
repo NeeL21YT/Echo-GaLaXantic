@@ -1,7 +1,7 @@
 # Echo on Android — fix and test status
 
-Branch: `mobile`. Last updated: 22 November 2026.
-Test phone: Redmi Note 10 (M2101K7BI), Android 13. App: debug APK built from this branch.
+Branch: merged into `main` on 22 November 2026 (the `mobile` branch is kept). Last updated: 22 November 2026.
+Test phones: Redmi Note 10 (M2101K7BI) and Realme 9 5G Speed Edition (RMX3461), both Android 13. App: debug APK built from this branch.
 Checks: `npm run build` has 0 TypeScript errors. `npm test` passes 433 tests in 30 files.
 
 This file has seven parts:

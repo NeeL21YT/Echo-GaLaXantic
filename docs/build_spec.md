@@ -16,7 +16,7 @@ Echo is a browser-based echolocation practice space. The player wears headphones
 
 | Constraint | Value |
 |---|---|
-| Platform | Desktop browser. Chrome is primary; Firefox is secondary. Android (Capacitor APK) is added on the `mobile` branch only — see §13. `main` stays desktop-only. |
+| Platform | Desktop browser. Chrome is primary; Firefox is secondary. Android (Capacitor APK) is part of `main` since the `mobile` work was merged on 22 Nov 2026 — see §13. |
 | Output | Headphones (wired is the tested setup) |
 | Stack | React 18, Vite, TypeScript (strict), Web Audio API, Canvas 2D, Web Speech API, Zustand, Vitest |
 | Backend | None. Static deploy on Vercel. |
@@ -519,9 +519,9 @@ Owners: **A** Audio engineer · **B** Geometry and levels · **C** Visuals and U
 
 ---
 
-## 13. Mobile (Android) — `mobile` branch only
+## 13. Mobile (Android)
 
-Lifts the "no mobile" and dependency bans for this branch. `main` is the frozen hackathon build.
+Lifts the "no mobile" and dependency bans. The work was built on the `mobile` branch and is now merged into `main`; `mobile` is kept as a branch.
 
 **Principle: teach, don't replace.** Echo trains the ear. Nothing on the phone should become a crutch, so every aid is guess-first and fades with skill.
 

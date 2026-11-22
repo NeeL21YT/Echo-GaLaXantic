@@ -70,14 +70,21 @@ This is the feedback a self-learner never gets by clicking at a real wall alone.
 - **Blind view:** black screen, big text, everything spoken, full keyboard and button control. It works with a screen reader.
 - **Observer view:** the rays light up what they hit, and the rays that escape through a gap visibly return nothing. Trainers, family and judges can see what the learner hears.
 
+### Teaching track and the phone app
+Testing alone does not teach, so Echo also **teaches the technique**.
+- **Six short spoken lessons** (make your click; which side; near and far; doorways are silence; poles and moving; practise in a real room), each with contrasting examples played through the same engine as the levels.
+- **A click coach.** The learner makes a real palatal tongue click; the microphone judges loudness, length and brightness, and Echo says whether it was good, with one concrete fix.
+- **An Android app** for people who cannot rely on a screen: touch gestures, volume buttons as controls, touch-and-hold to hear any control, Morse code and vibration feedback, a Back button, and a hand-off to TalkBack (Echo's own voice and gestures step aside when a screen reader is on).
+- **A real room check.** The phone plays a chirp and measures the nearest surface within five metres, in the dark and with no camera. The learner **guesses first**, then hears the real distance, and the number is held back after three close guesses in a row. The aim is to train their ears, not to make them depend on the phone.
+
 ### Tech
-React, Vite, TypeScript, Web Audio API, Canvas 2D, Web Speech API and Vercel. There is no backend and no ML. It runs offline after the first load, so nothing can break on demo day because of an API.
+React, Vite, TypeScript, Web Audio API, Canvas 2D, Web Speech API, Zustand, Capacitor (Android) and Vercel. There is no backend and no ML. It runs offline after the first load, so nothing can break on demo day because of an API.
 
 ## 4. Why it's different
 
 | Existing | What it is | How Echo differs |
 |---|---|---|
-| EchoLearn (Parsons, 2021) [4] | Mobile VR echolocation course with virtual clicks and multiple-choice exercises | Echo runs in any desktop browser with headphones, accepts a real tongue click, explains the cue after every answer with an A/B contrast, and uses time-stretch training wheels |
+| EchoLearn (Parsons, 2021) [4] | Mobile VR echolocation course with virtual clicks and multiple-choice exercises | Echo runs in any browser and as an Android app, with headphones, accepts a real tongue click, explains the cue after every answer with an A/B contrast, and uses time-stretch training wheels |
 | EchoExplorer (Georgia Tech) [5] | Game app for learning echo cues | Echo is built as a graded curriculum with explicit pass rules and an observer view for trainers |
 | Eyedar [6] | LiDAR-driven soundscape (pitch and volume encode objects) | That is sensory substitution through a device. Echo trains the human's own click-and-echo skill, which keeps working without any device |
 
@@ -89,6 +96,8 @@ React, Vite, TypeScript, Web Audio API, Canvas 2D, Web Speech API and Vercel. Th
 - Echo **complements the long cane**; it does not replace it. In Thaler's survey, every echolocator also used a cane. [2]
 - Practice is seated. Echo is not a navigation aid.
 - It needs headphones. Wired headphones are the tested setup.
+- The real room check measures the nearest surface, not the room, and its accuracy has not been measured against a tape measure on a device. One phone microphone cannot say where an echo came from.
+- The click coach's thresholds are first guesses. The Android app has been tested on two phones (Redmi Note 10 and Realme 9 5G Speed Edition), both on Android 13.
 
 ## 6. Impact path
 1. **Hackathon:** a working, deployed prototype, with blindfolded team tests of all five levels.
@@ -96,14 +105,14 @@ React, Vite, TypeScript, Web Audio API, Canvas 2D, Web Speech API and Vercel. Th
 3. **Then:** a fixed assessment block on unseen scenes, a comparison of reference click vs own click, and a small real-world study with an O&M trainer.
 4. **Roadmap:** phone head-tracking, real floor plans (practise your own home or school), material levels (glass, curtain, concrete), outdoor scenes (parked cars, poles, junctions) and a trainer dashboard.
 
-**Cost to users:** free. Any browser, headphones only.
+**Cost to users:** free. Any browser or an Android phone, with headphones.
 
 ## 7. Judging criteria map (Round 1: problem relevance, innovation, feasibility, impact)
 | Criterion | Our evidence |
 |---|---|
 | Problem relevance | Peer-reviewed learnability and mobility benefit [1][2]; training is scarce; India scale [3] |
 | Innovation | Gap-as-silence teaching; time-stretch training wheels; instructor loop with A/B contrast; a real tongue click as input |
-| Feasibility | Fully built in 36 h on browser-native APIs. No backend, no ML, offline. Live URL |
+| Feasibility | Fully built in 36 h on browser-native APIs. No backend, no ML, offline. Also an Android app |
 | Impact | Free and needs only headphones. Builds a skill that outlives any device. Clear validation path with O&M trainers |
 
 ## 8. Demo script (3 minutes)
